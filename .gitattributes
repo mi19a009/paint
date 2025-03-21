@@ -1,0 +1,9 @@
+# Git Attributes
+*.bmp           binary
+*.filters       text eol=crlf
+*.html          text eol=crlf
+*.ico           binary
+*.manifest      text eol=crlf
+*.rc            text eol=crlf working-tree-encoding=utf-16le-bom
+*.sln           text eol=crlf
+*.vcxproj       text eol=crlf
