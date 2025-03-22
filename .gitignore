@@ -1,0 +1,25 @@
+# Git Ignore
+~*
+*.aps
+*.cso
+*.pal
+*.suo
+*.user
+*_h.h
+*_i.c
+*_p.c
+._*
+.DS_Store
+.vs
+.vscode
+ARM
+ARM64
+bin
+dlldata.c
+obj
+Debug
+Generated Files
+Release
+Win32
+x64
+x86
