@@ -1,7 +1,14 @@
 # Git Ignore
 ~*
 *.aps
+*.bin
 *.cso
+*.dll
+*.exe
+*.lib
+*.o
+*.obj
+*.out
 *.pal
 *.suo
 *.user
@@ -20,6 +27,7 @@ obj
 Debug
 Generated Files
 Release
+resource.c
 Win32
 x64
 x86
