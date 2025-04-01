@@ -5,6 +5,7 @@
 *.h             text
 *.html          text eol=crlf
 *.ico           binary
+*.json          text
 *.manifest      text eol=crlf
 *.md            text
 *.rc            text eol=crlf working-tree-encoding=utf-16le-bom
