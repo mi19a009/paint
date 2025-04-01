@@ -22,11 +22,14 @@
 ARM
 ARM64
 bin
+build
 dlldata.c
 obj
 Debug
+debug
 Generated Files
 Release
+release
 resource.c
 Win32
 x64
