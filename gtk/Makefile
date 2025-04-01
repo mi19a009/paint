@@ -2,12 +2,12 @@
 RM     := rm -fr
 CFLAGS := $(OPTION) `pkg-config gtk+-3.0 --cflags`
 INC    := -I.
-LIBS   := `pkg-config gtk+-3.0 --libs`
+LIBS   := -lm `pkg-config gtk+-3.0 --libs`
 RESDIR := resource/
 SRCDIR := source/
-OBJ    := $(addprefix $(OUTDIR), about.o app.o main.o menu.o new.o resource.o toolbar.o)
+OBJ    := $(addprefix $(OUTDIR), about.o app.o main.o menu.o new.o resource.o status.o toolbar.o)
 OUT    := $(OUTDIR)a.out
-RES    := $(wildcard resource/*.*)
+RES    := $(wildcard $(RESDIR)*.*)
 RESOBJ := $(OUTDIR)resource.o
 RESSRC := $(OUTDIR)resource.c
 RESXML := resource.xml
@@ -25,7 +25,7 @@ debug:
 
 release:
 	@if test ! -e release; then mkdir release; fi
-	make "OUTDIR := release/" "OPTION := -Wall -O2"
+	@make "OUTDIR := release/" "OPTION := -Wall -O2"
 
 $(OUT): $(OBJ)
 	@echo $@

@@ -3,6 +3,7 @@ Copyright 2025 Taichi Murakami.
 アプリケーション ウィンドウを実装します。
 */
 
+#include <math.h>
 #include <gtk/gtk.h>
 #include "source.h"
 #define CCH_CAPTION             256
@@ -10,18 +11,26 @@ Copyright 2025 Taichi Murakami.
 #define DEFAULT_WIDTH           640
 #define SIG_CLOSE               "delete-event"
 #define SIG_DESTROY             "destroy"
+#define SIG_DRAW                "draw"
+#define SIG_ENTER               "enter-notify-event"
+#define SIG_MOTION              "motion-notify-event"
 #define SIG_STATECHANGED        "window-state-event"
 #define DATA_FILENAME           "filename"
+#define DATA_STATUS             "status"
 #define DATA_WINDOWSTATE        "windowstate"
 
+static GtkWidget *CreateCanvas(GtkWidget *window);
 static GtkWidget *CreateClient(GtkWidget *window);
-static GtkWidget *CreateStatusbar(GtkWidget *widget);
 static gchar *GetFileName(GtkWidget *window);
+static GtkWidget *GetStatus(GtkWidget *window);
 static GdkWindowState GetWindowState(GtkWidget *window);
 static gboolean OnClose(GtkWidget *window);
 static void OnDestroy(GtkWidget *window);
+static gboolean OnDraw(GtkWidget *canvas, cairo_t *cairo, GtkWindow *window);
+static gboolean OnMotion(GtkWidget *canvas, GdkEventMotion *event, GtkWidget *window);
 static void OnStateChanged(GtkWidget *window, GdkEventWindowState *event);
 static void SetFileName(GtkWidget *window, gchar *filename);
+static void SetStatus(GtkWidget *window, GtkWidget *status);
 static void SetWindowState(GtkWidget *window, GdkWindowState state);
 static void UpdateCaption(GtkWidget *window);
 
@@ -84,31 +93,41 @@ void OnApplicationActivate(GApplication *app)
 	gtk_widget_show_all(window);
 }
 
+static GtkWidget *CreateCanvas(GtkWidget *window)
+{
+	GtkWidget *canvas;
+	canvas = gtk_drawing_area_new();
+	gtk_widget_add_events(canvas, GDK_POINTER_MOTION_MASK);
+	g_signal_connect(canvas, SIG_DRAW, G_CALLBACK(OnDraw), window);
+	g_signal_connect(canvas, SIG_MOTION, G_CALLBACK(OnMotion), window);
+	return canvas;
+}
+
 static GtkWidget *CreateClient(GtkWidget *window)
 {
 	GtkWidget *box, *item;
 	box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_container_add(GTK_CONTAINER(window), box);
-	item = CreateMenuBar(window);
+	item = CreateMenu(window);
 	gtk_box_pack_start(GTK_BOX(box), item, FALSE, FALSE, 0);
 	item = CreateToolbar(window);
 	gtk_box_pack_start(GTK_BOX(box), item, FALSE, FALSE, 0);
-	item = CreateStatusbar(window);
+	item = CreateCanvas(window);
+	gtk_box_pack_start(GTK_BOX(box), item, TRUE, TRUE, 0);
+	item = CreateStatus();
 	gtk_box_pack_start(GTK_BOX(box), item, FALSE, FALSE, 0);
+	SetStatus(window, item);
 	return box;
-}
-
-static GtkWidget *CreateStatusbar(GtkWidget *widget)
-{
-	GtkWidget *statusbar;
-	statusbar = gtk_statusbar_new();
-	gtk_statusbar_push(GTK_STATUSBAR(statusbar), 0, "Status Bar");
-	return statusbar;
 }
 
 static gchar *GetFileName(GtkWidget *window)
 {
 	return (gchar*)g_object_get_data(G_OBJECT(window), DATA_FILENAME);
+}
+
+static GtkWidget *GetStatus(GtkWidget *window)
+{
+	return (GtkWidget*)g_object_get_data(G_OBJECT(window), DATA_STATUS);
 }
 
 static GdkWindowState GetWindowState(GtkWidget *window)
@@ -126,6 +145,22 @@ static void OnDestroy(GtkWidget *window)
 	SetFileName(window, NULL);
 }
 
+static gboolean OnDraw(GtkWidget *canvas, cairo_t *cairo, GtkWindow *window)
+{
+	cairo_move_to(cairo, 0, 0);
+	cairo_line_to(cairo, 300, 300);
+	cairo_stroke(cairo);
+	return FALSE;
+}
+
+static gboolean OnMotion(GtkWidget *canvas, GdkEventMotion *event, GtkWidget *window)
+{
+	GtkWidget *status;
+	status = GetStatus(window);
+	SetStatusPosition(status, (int)lround(event->x), (int)lround(event->y));
+	return FALSE;
+}
+
 static void OnStateChanged(GtkWidget *window, GdkEventWindowState *event)
 {
 	SetWindowState(window, event->new_window_state);
@@ -141,6 +176,11 @@ static void SetFileName(GtkWidget *window, gchar *filename)
 	{
 		g_free(previous);
 	}
+}
+
+static void SetStatus(GtkWidget *window, GtkWidget *status)
+{
+	g_object_set_data(G_OBJECT(window), DATA_STATUS, (gpointer)status);
 }
 
 static void SetWindowState(GtkWidget *window, GdkWindowState state)

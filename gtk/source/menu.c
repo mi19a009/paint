@@ -18,7 +18,7 @@ static const gchar *SaveAsMenuItem[LANG_MAX] = { "Save _as...", "名前を付け
 static const gchar *SaveMenuItem[LANG_MAX] = { "_Save", "上書き保存(_S)" };
 static const gchar *ViewMenuItem[LANG_MAX] = { "_View", "表示(_V)" };
 
-GtkWidget *CreateMenuBar(GtkWidget *window)
+GtkWidget *CreateMenu(GtkWidget *window)
 {
 	GtkAccelGroup *accel;
 	GtkWidget *bar, *item, *menu;

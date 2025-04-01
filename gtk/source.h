@@ -23,7 +23,8 @@ extern const gchar *TitleTexts[];
 extern const gchar *UntitledTexts[];
 
 void AboutDialog(void);
-GtkWidget *CreateMenuBar(GtkWidget *window);
+GtkWidget *CreateMenu(GtkWidget *window);
+GtkWidget *CreateStatus(void);
 GtkWidget *CreateToolbar(GtkWidget *window);
 void GetCaptionText(gchar *buffer, size_t cch, const gchar *filename);
 Language GetDefaultLanguage(void);
@@ -36,3 +37,4 @@ void OnActionQuit(GtkAction *action, GtkWidget *window);
 void OnActionSave(GtkAction *action, GtkWidget *window);
 void OnActionSaveAs(GtkAction *action, GtkWidget *window);
 void OnApplicationActivate(GApplication *app);
+void SetStatusPosition(GtkWidget *status, int x, int y);
