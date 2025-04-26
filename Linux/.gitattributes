@@ -1,0 +1,5 @@
+# Git Attributes
+*.c             text
+*.h             text
+*.xml           text
+Makefile        text

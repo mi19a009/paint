@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<interface>
+	<template class="PaintApplicationWindow" parent="GtkApplicationWindow">
+		<property name="titlebar">title</property>
+		<child>
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+				<child>
+					<object class="GtkBox" id="toolbar">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<child>
+							<object class="GtkButton">
+								<property name="icon-name">application-exit</property>
+								<property name="action-name">app.quit</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSeparator" />
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkSeparator" />
+				</child>
+				<child>
+					<object class="GtkScrolledWindow">
+						<property name="hexpand">TRUE</property>
+						<property name="vexpand">TRUE</property>
+						<child>
+							<object class="GtkDrawingArea" id="canvas">
+								<property name="content-height">1000</property>
+								<property name="content-width">1000</property>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkSeparator" />
+				</child>
+				<child>
+					<object class="GtkBox" id="status">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">Status</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSeparator" />
+						</child>
+					</object>
+				</child>
+			</object>
+		</child>
+	</template>
+	<object class="GtkHeaderBar" id="title">
+		<!-- <property name="title-widget">
+		</property> -->
+		<child type="end">
+			<object class="GtkMenuButton">
+				<property name="icon-name">open-menu-symbolic</property>
+				<property name="popover">main_menu</property>
+			</object>
+		</child>
+		<child type="end">
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+				<property name="valign">GTK_ALIGN_CENTER</property>
+				<property name="vexpand">TRUE</property>
+				<child>
+					<object class="GtkLabel" id="position_label">
+						<property name="label">Position</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkLabel" id="size_label">
+						<property name="label">Size</property>
+					</object>
+				</child>
+			</object>
+		</child>
+	</object>
+	<object class="GtkPopover" id="main_menu">
+		<child>
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<child>
+							<object class="GtkButton">
+								<property name="icon-name">zoom-in-symbolic</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="label">100%</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="icon-name">zoom-out-symbolic</property>
+							</object>
+						</child>
+						<style>
+							<class name="linked" />
+						</style>
+					</object>
+				</child>
+				<child>
+					<object class="GtkButton">
+						<property name="label">Click Click Click</property>
+					</object>
+				</child>
+			</object>
+		</child>
+	</object>
+</interface>
