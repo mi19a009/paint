@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright 2025 Taichi Murakami.
 Paint.ApplicationWindow class.
 */
@@ -18,10 +18,11 @@ Paint.ApplicationWindow class.
 #define ACTION_SAVE_AS          "save-as"
 #define ACTION_SELECT_ALL       "select-all"
 #define ACTION_UNDO             "undo"
+#define ACTION_VIEW             "view"
 #define CCH_LABEL               32
 #define DEFAULT_HEIGHT          480
 #define DEFAULT_WIDTH           640
-#define NOTIFY_STATE            "notify::state"
+#define LOGO_ICON_NAME          "application-x-executable"
 #define PROPERTY_APPLICATION    "application"
 #define PROPERTY_SHOW_MENUBAR   "show-menubar"
 #define SIGNAL_ACTIVATE         "activate"
@@ -38,13 +39,13 @@ Paint.ApplicationWindow class.
 struct _PaintApplicationWindow
 {
 	GtkApplicationWindow parent;
-	GtkMenuButton *menu_button;
-	GtkButton *open_button;
 	GtkDrawingArea *canvas;
-	GtkLabel *position_label;
-	GtkLabel *size_label;
 	GtkGesture *gesture;
-	GtkEventController *controller_motion;
+	GtkLabel *header_position;
+	GtkLabel *header_size;
+	GtkLabel *subtitle_label;
+	GtkLabel *title_label;
+	GtkEventController *motion;
 	cairo_surface_t *surface;
 	double motion_x;
 	double motion_y;
@@ -52,7 +53,7 @@ struct _PaintApplicationWindow
 	int modified;
 };
 
-static void paint_application_window_class_init (PaintApplicationWindowClass *class);
+static void paint_application_window_class_init (PaintApplicationWindowClass *window);
 static void paint_application_window_init (PaintApplicationWindow *window);
 static void activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void activate_close (GSimpleAction *action, GVariant *parameter, gpointer user_data);
@@ -72,11 +73,13 @@ static void alert (GtkWindow *window);
 static void clear (PaintApplicationWindow *window);
 static gboolean close_request (GtkWindow *window);
 static void constructed (GObject *object);
-static void create_window (GApplication *application, GFile *file);
+static void create_about_dialog (PaintApplicationWindow *window);
+static void create_window (PaintApplicationWindow *window, GFile *file);
 static void dispose (GObject *object);
 static void draw_canvas (GtkDrawingArea *canvas, cairo_t *cairo, int width, int height, gpointer user_data);
 static void draw_surface (PaintApplicationWindow *window, double x, double y);
 static void enter (GtkEventControllerMotion *motion, double x, double y, gpointer user_data);
+static void init_canvas (PaintApplicationWindow *window);
 static void init_object_class (GObjectClass *class);
 static void init_surface (PaintApplicationWindow *window, int width, int height);
 static void init_widget_class (GtkWidgetClass *class);
@@ -88,8 +91,8 @@ static void release (GtkGestureClick *gesture, int n_press, double x, double y, 
 static void response_close (GObject *source, GAsyncResult *result, gpointer user_data);
 static void response_open (GObject *source, GAsyncResult *result, gpointer user_data);
 static void response_save (GObject *source, GAsyncResult *result, gpointer user_data);
-static void update_position_label (GtkLabel *label, double x, double y);
-static void update_size_label (GtkLabel *label, int width, int height);
+static void update_header_position (GtkLabel *label, double x, double y);
+static void update_header_size (GtkLabel *label, int width, int height);
 
 G_DEFINE_FINAL_TYPE (PaintApplicationWindow, paint_application_window, GTK_TYPE_APPLICATION_WINDOW);
 #define SELF    PAINT_APPLICATION_WINDOW
@@ -116,14 +119,14 @@ static const GActionEntry action_entries[] =
 
 GtkWidget *paint_application_window_new (GApplication *application)
 {
-	return (GtkWidget *) g_object_new (TYPE, PROPERTY_APPLICATION, application, PROPERTY_SHOW_MENUBAR, TRUE, NULL);
+	return (GtkWidget *) g_object_new (TYPE, PROPERTY_APPLICATION, application, NULL);
 }
 
-static void paint_application_window_class_init (PaintApplicationWindowClass *class)
+static void paint_application_window_class_init (PaintApplicationWindowClass *window)
 {
-	init_object_class (G_OBJECT_CLASS (class));
-	init_widget_class (GTK_WIDGET_CLASS (class));
-	init_window_class (GTK_WINDOW_CLASS (class));
+	init_object_class (G_OBJECT_CLASS (window));
+	init_widget_class (GTK_WIDGET_CLASS (window));
+	init_window_class (GTK_WINDOW_CLASS (window));
 }
 
 static void paint_application_window_init (PaintApplicationWindow *window)
@@ -131,54 +134,12 @@ static void paint_application_window_init (PaintApplicationWindow *window)
 	gtk_widget_init_template (GTK_WIDGET (window));
 	g_action_map_add_action_entries (G_ACTION_MAP (window), action_entries, G_N_ELEMENTS (action_entries), window);
 	init_surface (window, 640, 480);
-
-	if (window->canvas)
-	{
-		gtk_drawing_area_set_draw_func (window->canvas, draw_canvas, window, NULL);
-		window->controller_motion = gtk_event_controller_motion_new ();
-
-		if (window->controller_motion)
-		{
-			gtk_event_controller_set_propagation_phase (window->controller_motion, GTK_PHASE_CAPTURE);
-			g_signal_connect (window->controller_motion, SIGNAL_ENTER, G_CALLBACK (enter), window);
-			g_signal_connect (window->controller_motion, SIGNAL_LEAVE, G_CALLBACK (leave), window);
-			g_signal_connect (window->controller_motion, SIGNAL_MOTION, G_CALLBACK (move), window);
-			gtk_widget_add_controller (GTK_WIDGET (window->canvas), window->controller_motion);
-		}
-
-		window->gesture = gtk_gesture_click_new ();
-
-		if (window->gesture)
-		{
-			g_signal_connect (window->gesture, SIGNAL_PRESSED, G_CALLBACK (press), window);
-			g_signal_connect (window->gesture, SIGNAL_RELEASED, G_CALLBACK (release), window);
-			gtk_widget_add_controller (GTK_WIDGET (window->canvas), GTK_EVENT_CONTROLLER (window->gesture));
-		}
-	}
+	init_canvas (window);
 }
 
 static void activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	PaintApplicationWindow *window = user_data;
-	GtkBuilder *builder;
-	GtkAboutDialog *dialog;
-	char name [CCH_RESOURCE_NAME];
-	format_resource_name (name, CCH_RESOURCE_NAME, TEMPLATE_ABOUT);
-	builder = gtk_builder_new_from_resource (name);
-
-	if (builder)
-	{
-		dialog = GTK_ABOUT_DIALOG (gtk_builder_get_object (builder, TEMPLATE_ABOUT));
-
-		if (dialog)
-		{
-			g_signal_connect_swapped(dialog, SIGNAL_DESTROY, G_CALLBACK(gtk_window_destroy), dialog);
-			gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (window));
-			gtk_window_present (GTK_WINDOW (dialog));
-		}
-
-		g_object_unref(builder);
-	}
+	create_about_dialog (user_data);
 }
 
 static void activate_close (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -197,14 +158,7 @@ static void activate_cut (GSimpleAction *action, GVariant *parameter, gpointer u
 
 static void activate_new (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	PaintApplicationWindow *window = user_data;
-	GtkApplication *application;
-	application = gtk_window_get_application (GTK_WINDOW (window));
-
-	if (application)
-	{
-		create_window (G_APPLICATION (application), NULL);
-	}
+	create_window (user_data, NULL);
 }
 
 static void activate_open (GSimpleAction *action, GVariant *parameter, gpointer user_data)
@@ -325,14 +279,46 @@ static void constructed (GObject *object)
 	G_OBJECT_CLASS (SUPER)->constructed (object);
 }
 
-static void create_window (GApplication *application, GFile *file)
+/* バージョン情報ダイアログ ボックスを表示します。 */
+static void create_about_dialog (PaintApplicationWindow *window)
 {
-	GtkWidget *window;
-	window = paint_application_window_new (application);
+	GtkWidget *dialog;
+	char text [CCH_LABEL];
+	dialog = gtk_about_dialog_new ();
 
-	if (window)
+	if (dialog)
 	{
-		gtk_window_present (GTK_WINDOW (window));
+		snprintf (text, CCH_LABEL, "%u.%u.%u", gtk_get_major_version (), gtk_get_minor_version (), gtk_get_micro_version ());
+		gtk_window_set_destroy_with_parent (GTK_WINDOW (dialog), TRUE);
+		gtk_window_set_modal (GTK_WINDOW (dialog), TRUE);
+		gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (window));
+		gtk_about_dialog_set_authors (GTK_ABOUT_DIALOG (dialog), paint_application_authors);
+		gtk_about_dialog_set_copyright (GTK_ABOUT_DIALOG (dialog), paint_application_copyright);
+		gtk_about_dialog_set_license_type (GTK_ABOUT_DIALOG (dialog), GTK_LICENSE_APACHE_2_0);
+		gtk_about_dialog_set_logo_icon_name (GTK_ABOUT_DIALOG (dialog), LOGO_ICON_NAME);
+		gtk_about_dialog_set_program_name (GTK_ABOUT_DIALOG (dialog), paint_application_name);
+		gtk_about_dialog_set_version (GTK_ABOUT_DIALOG (dialog), text);
+		gtk_about_dialog_set_website (GTK_ABOUT_DIALOG (dialog), paint_application_website);
+		g_signal_connect_swapped(dialog, SIGNAL_DESTROY, G_CALLBACK(gtk_window_destroy), dialog);
+		gtk_window_present (GTK_WINDOW (dialog));
+	}
+}
+
+/* 新しいウィンドウを作成します。 */
+static void create_window (PaintApplicationWindow *window, GFile *file)
+{
+	GtkApplication *application;
+	GtkWidget *widget;
+	application = gtk_window_get_application (GTK_WINDOW (window));
+
+	if (application)
+	{
+		widget = paint_application_window_new (G_APPLICATION (application));
+	
+		if (widget)
+		{
+			gtk_window_present (GTK_WINDOW (widget));
+		}
 	}
 }
 
@@ -379,6 +365,33 @@ static void enter (GtkEventControllerMotion *motion, double x, double y, gpointe
 {
 }
 
+static void init_canvas (PaintApplicationWindow *window)
+{
+	if (window->canvas)
+	{
+		gtk_drawing_area_set_draw_func (window->canvas, draw_canvas, window, NULL);
+		window->motion = gtk_event_controller_motion_new ();
+
+		if (window->motion)
+		{
+			gtk_event_controller_set_propagation_phase (window->motion, GTK_PHASE_CAPTURE);
+			g_signal_connect (window->motion, SIGNAL_ENTER, G_CALLBACK (enter), window);
+			g_signal_connect (window->motion, SIGNAL_LEAVE, G_CALLBACK (leave), window);
+			g_signal_connect (window->motion, SIGNAL_MOTION, G_CALLBACK (move), window);
+			gtk_widget_add_controller (GTK_WIDGET (window->canvas), window->motion);
+		}
+
+		window->gesture = gtk_gesture_click_new ();
+
+		if (window->gesture)
+		{
+			g_signal_connect (window->gesture, SIGNAL_PRESSED, G_CALLBACK (press), window);
+			g_signal_connect (window->gesture, SIGNAL_RELEASED, G_CALLBACK (release), window);
+			gtk_widget_add_controller (GTK_WIDGET (window->canvas), GTK_EVENT_CONTROLLER (window->gesture));
+		}
+	}
+}
+
 static void init_object_class (GObjectClass *class)
 {
 	class->constructed = constructed;
@@ -404,9 +417,9 @@ static void init_surface (PaintApplicationWindow *window, int width, int height)
 			gtk_drawing_area_set_content_width (window->canvas, width);
 			gtk_drawing_area_set_content_height (window->canvas, height);
 		}
-		if (window->size_label)
+		if (window->header_size)
 		{
-			update_size_label (window->size_label, width, height);
+			update_header_size (window->header_size, width, height);
 		}
 	}
 	else
@@ -421,8 +434,10 @@ static void init_widget_class (GtkWidgetClass *class)
 	format_resource_name (name, CCH_RESOURCE_NAME, TEMPLATE_WINDOW);
 	gtk_widget_class_set_template_from_resource (class, name);
 	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, canvas);
-	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, position_label);
-	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, size_label);
+	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, header_position);
+	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, header_size);
+	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, subtitle_label);
+	gtk_widget_class_bind_template_child (class, PaintApplicationWindow, title_label);
 }
 
 static void init_window_class (GtkWindowClass *class)
@@ -443,9 +458,9 @@ static void move (GtkEventControllerMotion *motion, double x, double y, gpointer
 		draw_surface (window, x, y);
 		gtk_widget_queue_draw (gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (motion)));
 	}
-	if (window->position_label)
+	if (window->header_position)
 	{
-		update_position_label (window->position_label, x, y);
+		update_header_position (window->header_position, x, y);
 	}
 
 	window->motion_x = x;
@@ -455,6 +470,7 @@ static void move (GtkEventControllerMotion *motion, double x, double y, gpointer
 static void press (GtkGestureClick *gesture, int n_press, double x, double y, gpointer user_data)
 {
 	PaintApplicationWindow *window = user_data;
+	g_print ("Press: %d\n", gtk_gesture_single_get_button (GTK_GESTURE_SINGLE (gesture)));
 	window->pressed = TRUE;
 }
 
@@ -475,6 +491,7 @@ static void response_close (GObject *source, GAsyncResult *result, gpointer user
 	}
 }
 
+/* ファイルを開くダイアログが応答しました。 */
 static void response_open (GObject *source, GAsyncResult *result, gpointer user_data)
 {
 	PaintApplicationWindow *window = user_data;
@@ -489,14 +506,7 @@ static void response_open (GObject *source, GAsyncResult *result, gpointer user_
 
 		if (file)
 		{
-			GtkApplication *application;
-			application = gtk_window_get_application (GTK_WINDOW (window));
-
-			if (application)
-			{
-				create_window (G_APPLICATION (application), file);
-			}
-
+			create_window (window, file);
 			g_object_unref (file);
 		}
 	}
@@ -546,7 +556,7 @@ static void response_save (GObject *source, GAsyncResult *result, gpointer user_
 	}
 }
 
-static void update_position_label (GtkLabel *label, double x, double y)
+static void update_header_position (GtkLabel *label, double x, double y)
 {
 	char text [CCH_LABEL];
 	int x0, y0;
@@ -556,7 +566,7 @@ static void update_position_label (GtkLabel *label, double x, double y)
 	gtk_label_set_label (label, text);
 }
 
-static void update_size_label (GtkLabel *label, int width, int height)
+static void update_header_size (GtkLabel *label, int width, int height)
 {
 	char text [CCH_LABEL];
 	snprintf (text, CCH_LABEL, "Size: (%d, %d)", width, height);

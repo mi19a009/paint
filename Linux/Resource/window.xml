@@ -1,65 +1,145 @@
 <?xml version="1.0" encoding="utf-8"?>
 <interface>
 	<template class="PaintApplicationWindow" parent="GtkApplicationWindow">
-		<property name="titlebar">title</property>
+		<property name="title">Paint</property>
+		<property name="titlebar">header_bar</property>
 		<child>
-			<object class="GtkBox">
-				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+			<object class="GtkScrolledWindow">
+				<property name="hexpand">TRUE</property>
+				<property name="vexpand">TRUE</property>
 				<child>
-					<object class="GtkBox" id="toolbar">
-						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-						<child>
-							<object class="GtkButton">
-								<property name="icon-name">application-exit</property>
-								<property name="action-name">app.quit</property>
-							</object>
-						</child>
-						<child>
-							<object class="GtkSeparator" />
-						</child>
-					</object>
-				</child>
-				<child>
-					<object class="GtkSeparator" />
-				</child>
-				<child>
-					<object class="GtkScrolledWindow">
-						<property name="hexpand">TRUE</property>
-						<property name="vexpand">TRUE</property>
-						<child>
-							<object class="GtkDrawingArea" id="canvas">
-								<property name="content-height">1000</property>
-								<property name="content-width">1000</property>
-							</object>
-						</child>
-					</object>
-				</child>
-				<child>
-					<object class="GtkSeparator" />
-				</child>
-				<child>
-					<object class="GtkBox" id="status">
-						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-						<child>
-							<object class="GtkLabel">
-								<property name="label">Status</property>
-							</object>
-						</child>
-						<child>
-							<object class="GtkSeparator" />
-						</child>
+					<object class="GtkDrawingArea" id="canvas">
+						<property name="content-height">1000</property>
+						<property name="content-width">1000</property>
 					</object>
 				</child>
 			</object>
 		</child>
 	</template>
-	<object class="GtkHeaderBar" id="title">
-		<!-- <property name="title-widget">
-		</property> -->
+	<menu id="menu">
+		<section>
+			<item>
+				<attribute name="action">win.new</attribute>
+				<attribute name="label">_New</attribute>
+			</item>
+			<item>
+				<attribute name="action">win.open</attribute>
+				<attribute name="label">Open...</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="action">win.save</attribute>
+				<attribute name="label">_Save</attribute>
+			</item>
+			<item>
+				<attribute name="action">win.save-as</attribute>
+				<attribute name="label">Save _as...</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="action">win.print</attribute>
+				<attribute name="label">_Print...</attribute>
+			</item>
+			<item>
+				<attribute name="action">win.page-setup</attribute>
+				<attribute name="label">Page Set_up...</attribute>
+			</item>
+			<item>
+				<attribute name="action">win.property</attribute>
+				<attribute name="label">Property</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="action">win.preferences</attribute>
+				<attribute name="label">P_references</attribute>
+			</item>
+			<item>
+				<attribute name="action">app.help</attribute>
+				<attribute name="label">_Help</attribute>
+			</item>
+			<item>
+				<attribute name="action">win.about</attribute>
+				<attribute name="label">_About</attribute>
+			</item>
+		</section>
+	</menu>
+	<object class="GtkHeaderBar" id="header_bar">
+		<property name="title-widget">title_widget</property>
+		<child type="start">
+			<object class="GtkBox">
+				<style>
+					<class name="linked" />
+				</style>
+				<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+				<child>
+					<object class="GtkMenuButton">
+						<style>
+							<class name="titlebutton" />
+						</style>
+						<property name="icon-name">edit-undo-symbolic</property>
+						<property name="tooltip-text">Undo</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkMenuButton">
+						<style>
+							<class name="titlebutton" />
+						</style>
+						<property name="icon-name">edit-redo-symbolic</property>
+						<property name="tooltip-text">Redo</property>
+					</object>
+				</child>
+			</object>
+		</child>
+		<child type="start">
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+				<style>
+					<class name="linked" />
+				</style>
+				<child>
+					<object class="GtkMenuButton">
+						<style>
+							<class name="titlebutton" />
+						</style>
+						<property name="icon-name">folder-symbolic</property>
+						<property name="popover">view_popover</property>
+						<property name="tooltip-text">View</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkMenuButton">
+						<style>
+							<class name="titlebutton" />
+						</style>
+						<property name="icon-name">folder-symbolic</property>
+						<property name="popover">layer_popover</property>
+						<property name="tooltip-text">Layer</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkMenuButton">
+						<style>
+							<class name="titlebutton" />
+						</style>
+						<property name="icon-name">document-edit-symbolic</property>
+						<property name="popover">tool_popover</property>
+						<property name="tooltip-text">Toolbox</property>
+					</object>
+				</child>
+			</object>
+		</child>
 		<child type="end">
 			<object class="GtkMenuButton">
+				<style>
+					<class name="titlebutton" />
+				</style>
 				<property name="icon-name">open-menu-symbolic</property>
-				<property name="popover">main_menu</property>
+				<property name="tooltip-text">Menu</property>
+				<property name="menu-model">menu</property>
 			</object>
 		</child>
 		<child type="end">
@@ -68,19 +148,48 @@
 				<property name="valign">GTK_ALIGN_CENTER</property>
 				<property name="vexpand">TRUE</property>
 				<child>
-					<object class="GtkLabel" id="position_label">
+					<object class="GtkLabel" id="header_position">
+						<style>
+							<class name="subtitle" />
+						</style>
+						<property name="halign">GTK_ALIGN_START</property>
 						<property name="label">Position</property>
 					</object>
 				</child>
 				<child>
-					<object class="GtkLabel" id="size_label">
+					<object class="GtkLabel" id="header_size">
+						<style>
+							<class name="subtitle" />
+						</style>
+						<property name="halign">GTK_ALIGN_START</property>
 						<property name="label">Size</property>
 					</object>
 				</child>
 			</object>
 		</child>
 	</object>
-	<object class="GtkPopover" id="main_menu">
+	<object class="GtkBox" id="title_widget">
+		<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+		<property name="valign">GTK_ALIGN_CENTER</property>
+		<property name="vexpand">TRUE</property>
+		<child>
+			<object class="GtkLabel" id="title_label">
+				<style>
+					<class name="title" />
+				</style>
+				<property name="label">Title</property>
+			</object>
+		</child>
+		<child>
+			<object class="GtkLabel" id="subtitle_label">
+				<style>
+					<class name="subtitle" />
+				</style>
+				<property name="label">Subtitle</property>
+			</object>
+		</child>
+	</object>
+	<object class="GtkPopover" id="layer_popover">
 		<child>
 			<object class="GtkBox">
 				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
@@ -88,28 +197,281 @@
 					<object class="GtkBox">
 						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
 						<child>
-							<object class="GtkButton">
-								<property name="icon-name">zoom-in-symbolic</property>
+							<object class="GtkBox">
+								<property name="margin-end">10</property>
+								<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+								<style>
+									<class name="linked" />
+								</style>
+								<child>
+									<object class="GtkButton" id="add_layer_button">
+										<property name="icon-name">list-add-symbolic</property>
+										<property name="tooltip-text">Add Layer</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkButton" id="remove_layer_button">
+										<property name="icon-name">list-remove-symbolic</property>
+										<property name="tooltip-text">Remove Layer</property>
+									</object>
+								</child>
 							</object>
 						</child>
 						<child>
-							<object class="GtkButton">
-								<property name="label">100%</property>
+							<object class="GtkBox">
+								<property name="margin-end">10</property>
+								<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+								<style>
+									<class name="linked" />
+								</style>
+								<child>
+									<object class="GtkButton" id="layer_down_button">
+										<property name="icon-name">pan-down-symbolic</property>
+										<property name="tooltip-text">Go Layer Down</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkButton" id="layer_up_button">
+										<property name="icon-name">pan-up-symbolic</property>
+										<property name="tooltip-text">Go Layer Up</property>
+									</object>
+								</child>
 							</object>
 						</child>
 						<child>
-							<object class="GtkButton">
-								<property name="icon-name">zoom-out-symbolic</property>
+							<object class="GtkBox">
+								<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+								<style>
+									<class name="linked" />
+								</style>
+								<child>
+									<object class="GtkButton" id="layer_property_button">
+										<property name="icon-name">document-properties-symbolic</property>
+										<property name="tooltip-text">Layer Property</property>
+									</object>
+								</child>
 							</object>
 						</child>
-						<style>
-							<class name="linked" />
-						</style>
 					</object>
 				</child>
 				<child>
-					<object class="GtkButton">
-						<property name="label">Click Click Click</property>
+					<object class="GtkListView">
+						<property name="hexpand">TRUE</property>
+					</object>
+				</child>
+			</object>
+		</child>
+	</object>
+	<object class="GtkPopover" id="tool_popover">
+		<child>
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">_Tool:</property>
+								<property name="margin-end">10</property>
+								<property name="use-underline">TRUE</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkBox">
+								<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+								<style>
+									<class name="linked" />
+								</style>
+								<child>
+									<object class="GtkToggleButton" id="pencil_button">
+										<property name="tooltip-text">Pencil</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkToggleButton" id="brush_button">
+										<property name="group">pencil_button</property>
+										<property name="tooltip-text">Brush</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkToggleButton" id="bucket_button">
+										<property name="group">brush_button</property>
+										<property name="tooltip-text">Bucket</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkToggleButton" id="dropper_button">
+										<property name="group">bucket_button</property>
+										<property name="tooltip-text">Dropper</property>
+									</object>
+								</child>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkSeparator" />
+				</child>
+				<child>
+					<object class="GtkGrid">
+						<child>
+							<object class="GtkLabel">
+								<property name="label">_Color:</property>
+								<property name="margin-end">10</property>
+								<property name="use-underline">TRUE</property>
+								<layout>
+									<property name="column">0</property>
+									<property name="row">0</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkColorDialogButton" id="color_button">
+								<property name="hexpand">TRUE</property>
+								<property name="dialog">
+									<object class="GtkColorDialog"></object>
+								</property>
+								<layout>
+									<property name="column">1</property>
+									<property name="row">0</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">_Width:</property>
+								<property name="margin-end">10</property>
+								<property name="use-underline">TRUE</property>
+								<layout>
+									<property name="column">0</property>
+									<property name="row">1</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSpinButton" id="width_button">
+								<property name="hexpand">TRUE</property>
+								<layout>
+									<property name="column">1</property>
+									<property name="row">1</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">in pixels</property>
+								<property name="margin-start">10</property>
+								<layout>
+									<property name="column">2</property>
+									<property name="row">1</property>
+								</layout>
+							</object>
+						</child>
+					</object>
+				</child>
+			</object>
+		</child>
+	</object>
+	<object class="GtkPopover" id="view_popover">
+		<child>
+			<object class="GtkBox">
+				<property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<style>
+							<class name="linked" />
+						</style>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.zoom-in</property>
+								<property name="icon-name">zoom-in-symbolic</property>
+								<property name="tooltip-text">Zoom In</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.restore-zoom</property>
+								<property name="hexpand">TRUE</property>
+								<property name="label">100%</property>
+								<property name="tooltip-text">Restore Zoom to Default</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.zoom-out</property>
+								<property name="icon-name">zoom-out-symbolic</property>
+								<property name="tooltip-text">Zoom Out</property>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<style>
+							<class name="linked" />
+						</style>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.rotate-left</property>
+								<property name="icon-name">object-rotate-left-symbolic</property>
+								<property name="tooltip-text">Rotate Counter-clock-wise</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.restore-rotation</property>
+								<property name="hexpand">TRUE</property>
+								<property name="label">0°</property>
+								<property name="tooltip-text">Restore Rotation to Default</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkButton">
+								<property name="action-name">win.rotate-right</property>
+								<property name="icon-name">object-rotate-right-symbolic</property>
+								<property name="tooltip-text">Rotate Clock-wise</property>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkCheckButton">
+						<property name="label">_Flip</property>
+						<property name="use-underline">TRUE</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkCheckButton">
+						<property name="label">Flip _Horizontal</property>
+						<property name="margin-start">20</property>
+						<property name="use-underline">TRUE</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkCheckButton">
+						<property name="label">Flip _Vertical</property>
+						<property name="margin-start">20</property>
+						<property name="use-underline">TRUE</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">_Margin:</property>
+								<property name="margin-end">10</property>
+								<property name="use-underline">TRUE</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSpinButton">
+								<property name="hexpand">TRUE</property>
+								<property name="numeric">TRUE</property>
+							</object>
+						</child>
 					</object>
 				</child>
 			</object>

@@ -2,7 +2,6 @@
 <gresources>
 	<gresource prefix="/com/github/mi19a009/paint">
 		<file alias="about" compressed="true" preprocess="xml-stripblanks">Resource/about.xml</file>
-		<file alias="menu" compressed="true" preprocess="xml-stripblanks">Resource/menu.xml</file>
 		<file alias="window" compressed="true" preprocess="xml-stripblanks">Resource/window.xml</file>
 	</gresource>
 </gresources>

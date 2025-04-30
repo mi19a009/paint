@@ -4,6 +4,7 @@ OBJS     := application.o main.o resource.o window.o
 HEADER   := stdafx.h
 
 # Directories
+IMGDIR   := Image
 OUTDIR   := Debug
 RESDIR   := Resource
 
@@ -31,7 +32,7 @@ release:
 $(OUTDIR)/$(TARGET): $(addprefix $(OUTDIR)/, $(OBJS))
 	@echo $@
 	@$(CC) -o $@ $^ $(OPTION) $(CFLAGS) $(LIBS)
-resource.c: resource.xml $(wildcard $(RESDIR)/*.*)
+resource.c: resource.xml $(wildcard $(IMGDIR)/*.*) $(wildcard $(RESDIR)/*.*)
 	@echo $@
 	@$(RC) $< --target $@ --generate-source
 $(OUTDIR)/resource.o: resource.c

@@ -2,6 +2,7 @@
 Copyright 2025 Taichi Murakami.
 */
 
+#pragma once
 #include <locale.h>
 #include <math.h>
 #include <gtk/gtk.h>
@@ -17,5 +18,9 @@ G_DECLARE_FINAL_TYPE (PaintApplicationWindow, paint_application_window, PAINT, A
 GApplication *paint_application_new (void);
 GtkWidget *paint_application_window_new (GApplication *application);
 
+extern const char *paint_application_authors[];
+extern const char *paint_application_copyright;
 extern const char *paint_application_id;
+extern const char *paint_application_name;
 extern const char *paint_application_prefix;
+extern const char *paint_application_website;
