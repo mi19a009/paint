@@ -1,17 +1,21 @@
 ﻿/*
 Copyright 2025 Taichi Murakami.
-Paint.Application class.
+GTK アプリケーションを実装します。
 */
 
-#include "stdafx.h"
-#define ACTION_CLOSE_NAME       "win.close"
+#include <gtk/gtk.h>
+#include "paint.h"
+
+#define ACTION_CLOSE_NAME       "window.close"
 #define ACTION_CLOSE_ACCEL      "<Ctrl>Q"
 #define ACTION_COPY_NAME        "win.copy"
 #define ACTION_COPY_ACCEL       "<Ctrl>C"
 #define ACTION_CUT_NAME         "win.cut"
 #define ACTION_CUT_ACCEL        "<Ctrl>X"
-#define ACTION_NEW_NAME         "win.new"
+#define ACTION_NEW              "new"
+#define ACTION_NEW_NAME         "app.new"
 #define ACTION_NEW_ACCEL        "<Ctrl>N"
+#define ACTION_OPEN             "open"
 #define ACTION_OPEN_NAME        "win.open"
 #define ACTION_OPEN_ACCEL       "<Ctrl>O"
 #define ACTION_PASTE_NAME       "win.paste"
@@ -31,32 +35,36 @@ Paint.Application class.
 #define ACTION_UNDO_ACCEL       "<Ctrl>Z"
 #define PROPERTY_APPLICATION_ID "application-id"
 #define PROPERTY_FLAGS          "flags"
-#define TEMPLATE_MENU           "menu"
+#define UI_MENU                 "menu"
+#define UI_TEMPLATE             "application.ui"
 
-struct _PaintApplication
+typedef struct _PaintApplication
 {
-	GtkApplication parent;
+	GtkApplication super;
 	GtkWidget *window;
 	GSettings *settings;
-};
+} Self;
 
-static void paint_application_class_init (PaintApplicationClass *application);
-static void paint_application_init (PaintApplication *application);
-static void activate (GApplication *application);
-static void activate_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void clear (PaintApplication *application);
-static void create_window (GApplication *application, GFile *file);
-static void dispose (GObject *object);
-static void init_accel (GtkApplication *application);
-static void init_object (GObjectClass *object);
-static void init_application (GApplicationClass *application);
-static void open (GApplication *application, GFile **files, gint n_files, const gchar *hint);
-static void startup (GApplication *application);
+static void paint_application_class_init (PaintApplicationClass *self);
+static void paint_application_init (PaintApplication *self);
 
 G_DEFINE_FINAL_TYPE (PaintApplication, paint_application, GTK_TYPE_APPLICATION);
-#define SELF    PAINT_APPLICATION
-#define SUPER   paint_application_parent_class
-#define TYPE    paint_application_get_type ()
+#define SUPER_CLASS             paint_application_parent_class
+#define THIS_TYPE               paint_application_get_type ()
+
+static void activate (GApplication *application);
+static void activate_new (GSimpleAction *action, GVariant *parameter, gpointer self);
+static void activate_quit (GSimpleAction *action, GVariant *parameter, gpointer self);
+static void dispose (GObject *object);
+static void dispose_self (Self *self);
+static void init_accel (GtkApplication *application);
+static void init_menu (GtkApplication *application);
+static void init_object_class (GObjectClass *object);
+static void init_application_class (GApplicationClass *application);
+static void open (GApplication *application, GFile **files, gint n_files, const gchar *hint);
+static void show_document_window (GApplication *application);
+static void show_document_window_from_file (GApplication *application, GFile *file);
+static void startup (GApplication *application);
 
 const char *paint_application_authors[] = { "Taichi Murakami", NULL };
 const char *paint_application_copyright = "Copyright © 2025 Taichi Murakami.";
@@ -65,85 +73,77 @@ const char *paint_application_name = "Paint";
 const char *paint_application_prefix = "/com/github/mi19a009/paint/";
 const char *paint_application_website = "https://github.com/mi19a009/paint";
 
+/* メニュー項目とキーボード ショートカット。 */
 static const char *accel_entries[] =
 {
 	ACTION_CLOSE_NAME, ACTION_CLOSE_ACCEL,
-	ACTION_COPY_NAME, ACTION_COPY_ACCEL,
-	ACTION_CUT_NAME, ACTION_CUT_ACCEL,
 	ACTION_NEW_NAME, ACTION_NEW_ACCEL,
 	ACTION_OPEN_NAME, ACTION_OPEN_ACCEL,
-	ACTION_PASTE_NAME, ACTION_PASTE_ACCEL,
-	ACTION_PRINT_NAME, ACTION_PRINT_ACCEL,
-	ACTION_REDO_NAME, ACTION_REDO_ACCEL,
-	ACTION_SAVE_AS_NAME, ACTION_SAVE_AS_ACCEL,
 	ACTION_SAVE_NAME, ACTION_SAVE_ACCEL,
-	ACTION_SELECT_ALL_NAME, ACTION_SELECT_ALL_ACCEL,
-	ACTION_UNDO_NAME, ACTION_UNDO_ACCEL,
+	ACTION_SAVE_AS_NAME, ACTION_SAVE_AS_ACCEL,
 	NULL,
 };
 
+/* メニュー項目とコールバック関数。 */
 static const GActionEntry action_entries[] =
 {
+	{ ACTION_NEW, activate_new },
 	{ ACTION_QUIT, activate_quit },
 };
 
+/* クラスの新しいインスタンスを初期化します。 */
 GApplication *paint_application_new (void)
 {
-	return (GApplication *) g_object_new (TYPE, PROPERTY_APPLICATION_ID, paint_application_id, PROPERTY_FLAGS, G_APPLICATION_HANDLES_OPEN, NULL);
+	return g_object_new (THIS_TYPE, PROPERTY_APPLICATION_ID, paint_application_id, PROPERTY_FLAGS, G_APPLICATION_HANDLES_OPEN, NULL);
 }
 
-static void paint_application_class_init (PaintApplicationClass *application)
+/* クラスを初期化します。 */
+static void paint_application_class_init (PaintApplicationClass *self)
 {
-	init_object (G_OBJECT_CLASS (application));
-	init_application (G_APPLICATION_CLASS (application));
+	init_object_class (G_OBJECT_CLASS (self));
+	init_application_class (G_APPLICATION_CLASS (self));
 }
 
-static void paint_application_init (PaintApplication *application)
+/* クラスの新しいインスタンスを初期化します。 */
+static void paint_application_init (PaintApplication *self)
 {
-	g_action_map_add_action_entries (G_ACTION_MAP (application), action_entries, G_N_ELEMENTS (action_entries), application);
+	g_action_map_add_action_entries (G_ACTION_MAP (self), action_entries, G_N_ELEMENTS (action_entries), self);
 }
 
 /* 新しいウィンドウを作成します。 */
 static void activate (GApplication *application)
 {
-	G_APPLICATION_CLASS (SUPER)->activate (application);
-	create_window (application, NULL);
+	G_APPLICATION_CLASS (SUPER_CLASS)->activate (application);
+	show_document_window (application);
 }
 
-/* 現在のアプリケーションを終了します。 */
-static void activate_quit (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+/* メニュー項目: 新しいウィンドウ。 */
+static void activate_new (GSimpleAction *action, GVariant *parameter, gpointer self)
 {
-	PaintApplication *application = user_data;
-	g_application_quit (G_APPLICATION (application));
+	show_document_window (G_APPLICATION (self));
 }
 
-/* 現在のクラス変数を開放します。 */
-static void clear (PaintApplication *application)
+/* メニュー項目: 終了。 */
+static void activate_quit (GSimpleAction *action, GVariant *parameter, gpointer self)
 {
-	g_clear_object (&application->settings);
-}
-
-/* 新しいウィンドウを作成します。 */
-static void create_window (GApplication *application, GFile *file)
-{
-	GtkWidget *window;
-	window = paint_application_window_new (application);
-
-	if (window)
-	{
-		gtk_window_present (GTK_WINDOW (window));
-	}
+	g_application_quit (G_APPLICATION (self));
 }
 
 /* 現在のインスタンスを終了します。 */
 static void dispose (GObject *object)
 {
-	clear (SELF (object));
-	G_OBJECT_CLASS (SUPER)->dispose (object);
+	dispose_self (PAINT_APPLICATION (object));
+	G_OBJECT_CLASS (SUPER_CLASS)->dispose (object);
+}
+
+/* 現在のクラス変数を開放します。 */
+static void dispose_self (Self *self)
+{
+	g_clear_object (&self->settings);
 }
 
 /* クラスのコールバック関数を登録します。 */
-static void init_object (GObjectClass *object)
+static void init_object_class (GObjectClass *object)
 {
 	object->dispose = dispose;
 }
@@ -165,8 +165,30 @@ static void init_accel (GtkApplication *application)
 	}
 }
 
+/* 現在のアプリケーションに新しいメニューを設定します。 */
+static void init_menu (GtkApplication *application)
+{
+	GtkBuilder *builder;
+	GMenuModel *menubar;
+	char name [CCH_RESOURCE_NAME];
+	format_resource_name (name, CCH_RESOURCE_NAME, UI_TEMPLATE);
+	builder = gtk_builder_new_from_resource (name);
+
+	if (builder)
+	{
+		menubar = G_MENU_MODEL (gtk_builder_get_object (builder, UI_MENU));
+
+		if (menubar)
+		{
+			gtk_application_set_menubar (application, menubar);
+		}
+
+		g_object_unref (builder);
+	}
+}
+
 /* クラスのコールバック関数を登録します。 */
-static void init_application (GApplicationClass *application)
+static void init_application_class (GApplicationClass *application)
 {
 	application->startup = startup;
 	application->activate = activate;
@@ -180,13 +202,46 @@ static void open (GApplication *application, GFile **files, gint n_files, const 
 
 	for (n = 0; n < n_files; n++)
 	{
-		create_window (application, files[n]);
+		show_document_window_from_file (application, *(files++));
+	}
+}
+
+/* 新しいドキュメント ウィンドウを作成します。 */
+static void show_document_window (GApplication *application)
+{
+	GtkWidget *window;
+	window = paint_document_window_new (application);
+
+	if (window)
+	{
+		gtk_window_present (GTK_WINDOW (window));
+	}
+}
+
+/* 新しいドキュメント ウィンドウを作成します。 */
+static void show_document_window_from_file (GApplication *application, GFile *file)
+{
+	char *path;
+	GtkWidget *window;
+	path = g_file_get_path (file);
+
+	if (path)
+	{
+		window = paint_document_window_new_from_file (application, path);
+	
+		if (window)
+		{
+			gtk_window_present (GTK_WINDOW (window));
+		}
+
+		g_free (path);
 	}
 }
 
 /* 現在のアプリケーションを開始します。 */
 static void startup (GApplication *application)
 {
-	G_APPLICATION_CLASS (SUPER)->startup (application);
+	G_APPLICATION_CLASS (SUPER_CLASS)->startup (application);
+	init_menu (GTK_APPLICATION (application));
 	init_accel (GTK_APPLICATION (application));
 }

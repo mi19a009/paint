@@ -1,7 +1,7 @@
 # Makefile
 TARGET   := a.out
-OBJS     := application.o main.o resource.o window.o
-HEADER   := stdafx.h
+OBJS     := about.o application.o document.o main.o resource.o
+HEADER   := paint.h
 
 # Directories
 IMGDIR   := Image
