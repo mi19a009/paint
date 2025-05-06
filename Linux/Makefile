@@ -1,5 +1,5 @@
 # Makefile
-TARGET   := a.out
+TARGET   := paint
 OBJS     := about.o application.o document.o main.o resource.o
 HEADER   := paint.h
 

@@ -31,6 +31,7 @@ GApplication *paint_application_new (void);
 void paint_action_map_add_action_entries (GActionMap *map, const PaintActionEntry *entries);
 GtkWidget *paint_application_window_new (GApplication *application);
 GtkWidget *paint_color_window_new (GtkWindow *parent);
+gchar *paint_get_settings_filename (void);
 GtkWidget *paint_document_window_new (GApplication *application);
 GtkWidget *paint_document_window_new_from_file (GApplication *application, const char *filename);
 GtkWidget *paint_layer_window_new (GtkWindow *parent);

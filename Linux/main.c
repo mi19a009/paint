@@ -6,6 +6,8 @@ Copyright 2025 Taichi Murakami.
 #include "paint.h"
 
 #define FORMAT_RESOURCE_NAME    "%s%s"
+#define SETTINGS_EXTENSION      ".ini"
+#define SETTINGS_FILENAME       "/proc/self/exe"
 #define SIGNAL_ACTIVATE         "activate"
 
 /* 新しいアプリケーションを開始します。 */
@@ -55,6 +57,34 @@ void paint_action_map_add_action_entries (GActionMap *map, const PaintActionEntr
 		g_action_map_add_action (map, G_ACTION (action));
 		entries++;
 	}
+}
+
+gchar *paint_get_settings_filename (void)
+{
+	gchar *filename, *path;
+	size_t length;
+	path = g_file_read_link (SETTINGS_FILENAME, NULL);
+
+	if (path)
+	{
+		length = strlen (path);
+		filename = g_renew (char, path, length + G_N_ELEMENTS (SETTINGS_EXTENSION));
+
+		if (filename)
+		{
+			memcpy (filename + length, SETTINGS_EXTENSION, G_N_ELEMENTS (SETTINGS_EXTENSION));
+		}
+		else
+		{
+			g_free (path);
+		}
+	}
+	else
+	{
+		filename = NULL;
+	}
+
+	return filename;
 }
 
 /* リソースへの完全パスを作成します。 */
