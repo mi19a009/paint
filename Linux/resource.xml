@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gresources>
 	<gresource prefix="/com/github/mi19a009/paint">
-		<file alias="about"          compressed="true" preprocess="xml-stripblanks">Resource/about.xml</file>
 		<file alias="application.ui" compressed="true" preprocess="xml-stripblanks">Resource/application.ui</file>
 		<file alias="document.ui"    compressed="true" preprocess="xml-stripblanks">Resource/document.ui</file>
-		<file alias="window"         compressed="true" preprocess="xml-stripblanks">Resource/window.xml</file>
 	</gresource>
 </gresources>

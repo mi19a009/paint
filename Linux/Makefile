@@ -22,7 +22,7 @@ all: $(OUTDIR)/$(TARGET)
 cflags:
 	@echo $(CFLAGS)
 clean:
-	@$(RM) Debug Release
+	@$(RM) Debug Release resource.c
 debug:
 	@make "OUTDIR := Debug" "OPTION := -Wall -g"
 libs:
