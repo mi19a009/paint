@@ -1,45 +1,48 @@
-# Makefile
-TARGET   := paint
-OBJS     := about.o application.o document.o main.o resource.o
-HEADER   := paint.h
+#!/usr/bin/make
 
-# Directories
-IMGDIR   := Image
-OUTDIR   := Debug
-RESDIR   := Resource
-
-# Options
-CFLAGS   := `pkg-config gtk4 --cflags`
+CFLAGS   := -Wall
+GIOFLAGS := `pkg-config gio-2.0 --cflags`
+GTKFLAGS := `pkg-config gtk4 --cflags`
 LIBS     := -lm `pkg-config gtk4 --libs`
+OBJS     := paint.o paintapplication.o paintapplicationwindow.o paintsettings.o resource.o text.o
+OPT      := -g
+OUT      := debug
+CCC    = echo $@; if test ! -e $(OUT); then mkdir $(OUT); fi; $(CC) -o $@ -c $< $(OPT) $(CFLAGS)
+CCCGIO = $(CCC) $(GIOFLAGS)
+CCCGTK = $(CCC) $(GTKFLAGS)
+.PHONY: all clean debug release
 
-# Commands
-MKOUTDIR := if test ! -e $(OUTDIR); then mkdir $(OUTDIR); fi
-RC       := glib-compile-resources
-RM       := rm -fr
+# Debug Build
+all: $(OUT)/paint
 
-.PHONY: all cflags clean debug libs release
-all: $(OUTDIR)/$(TARGET)
-cflags:
-	@echo $(CFLAGS)
+# Clean Build
 clean:
-	@$(RM) Debug Release resource.c
-debug:
-	@make "OUTDIR := Debug" "OPTION := -Wall -g"
-libs:
-	@echo $(LIBS)
+	@rm -fr debug release
+
+# Release Build
 release:
-	@make "OUTDIR := Release" "OPTION := -Wall -O2"
-$(OUTDIR)/$(TARGET): $(addprefix $(OUTDIR)/, $(OBJS))
-	@echo $@
-	@$(CC) -o $@ $^ $(OPTION) $(CFLAGS) $(LIBS)
-resource.c: resource.xml $(wildcard $(IMGDIR)/*.*) $(wildcard $(RESDIR)/*.*)
-	@echo $@
-	@$(RC) $< --target $@ --generate-source
-$(OUTDIR)/resource.o: resource.c
-	@echo $@
-	@$(MKOUTDIR)
-	@$(CC) -o $@ -c $< $(OPTION) $(CFLAGS)
-$(OUTDIR)/%.o: %.c $(HEADER)
-	@echo $@
-	@$(MKOUTDIR)
-	@$(CC) -o $@ -c $< $(OPTION) $(CFLAGS)
+	@make "OUT := release" "OPT := -O2"
+
+# Paint
+$(OUT)/paint: $(addprefix $(OUT)/, $(OBJS))
+	@echo $@; $(CC) -o $@ $^ $(OPT) $(CFLAGS) $(GTKFLAGS) $(LIBS)
+
+# Paint OBJ
+$(OUT)/paint.o: paint.c paint.h text.h
+	@$(CCCGTK)
+
+# Paint OBJ%
+$(OUT)/paint%.o: paint%.c paint.h text.h
+	@$(CCCGTK)
+
+# Resource C
+$(OUT)/resource.c: resource.xml $(wildcard resource/*.*)
+	@echo $@; glib-compile-resources $< --target $@ --generate-source
+
+# Resource OBJ
+$(OUT)/resource.o: $(OUT)/resource.c
+	@$(CCCGIO)
+
+# Text OBJ
+$(OUT)/text.o: text.c text.h
+	@$(CCC)

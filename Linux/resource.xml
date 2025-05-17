@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gresources>
 	<gresource prefix="/com/github/mi19a009/paint">
-		<file alias="application.ui" compressed="true" preprocess="xml-stripblanks">Resource/application.ui</file>
-		<file alias="document.ui"    compressed="true" preprocess="xml-stripblanks">Resource/document.ui</file>
+		<!-- <file compressed="true" preprocess="xml-stripblanks">resource/menubar.xml</file> -->
+		<!-- <file compressed="true" preprocess="xml-stripblanks">resource/toolbar.ui</file> -->
 	</gresource>
 </gresources>
