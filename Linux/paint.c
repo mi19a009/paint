@@ -4,7 +4,17 @@
  */
 
 #include "paint.h"
-#define PAINT_TOOLBAR_SPACING 1
+#define PAINT_FORMAT_LIBRARY_GLIB               "GLIB %u.%u.%u"
+#define PAINT_FORMAT_LIBRARY_GTK                "GTK %u.%u.%u"
+#define PAINT_TOOLBAR_SPACING                   1
+
+typedef enum _PaintCreditSectionLibrary
+{
+	PAINT_CREDIT_SECTION_LIBRARY_GLIB,
+	PAINT_CREDIT_SECTION_LIBRARY_GTK,
+	PAINT_CREDIT_SECTION_LIBRARY_MAX,
+	PAINT_CREDIT_SECTION_LIBRARY_PEOPLE,
+} PaintCreditSectionLibrary;
 
 static void             paint_about_dialog_init                (GtkAboutDialog *dialog);
 static void             paint_about_dialog_init_version        (GtkAboutDialog *dialog);
@@ -52,6 +62,7 @@ void paint_about_dialog_init (GtkAboutDialog *dialog)
 	gtk_about_dialog_set_license_type (dialog, GTK_LICENSE_APACHE_2_0);
 	gtk_about_dialog_set_logo_icon_name (dialog, PAINT_LOGO_ICON_NAME);
 	gtk_about_dialog_set_program_name (dialog, TEXT (text_title));
+	gtk_about_dialog_set_version (dialog, paint_application_version);
 	gtk_about_dialog_set_website (dialog, paint_application_website);
 	paint_about_dialog_init_version (dialog);
 }
@@ -61,13 +72,25 @@ void paint_about_dialog_init (GtkAboutDialog *dialog)
  */
 void paint_about_dialog_init_version (GtkAboutDialog *dialog)
 {
+	char *people [PAINT_CREDIT_SECTION_LIBRARY_PEOPLE];
 	guint major, minor, micro;
-	char version [PAINT_CCH_VERSION];
+	char version [PAINT_CCH_VERSION * PAINT_CREDIT_SECTION_LIBRARY_MAX];
+	people [PAINT_CREDIT_SECTION_LIBRARY_MAX] = NULL;
+
+	for (major = 0; major < PAINT_CREDIT_SECTION_LIBRARY_MAX; major++)
+	{
+		people [major] = version + major * PAINT_CCH_VERSION;
+	}
+
+	major = glib_major_version;
+	minor = glib_minor_version;
+	micro = glib_micro_version;
+	g_snprintf (people [PAINT_CREDIT_SECTION_LIBRARY_GLIB], PAINT_CCH_VERSION, PAINT_FORMAT_LIBRARY_GLIB, major, minor, micro);
 	major = gtk_get_major_version ();
 	minor = gtk_get_minor_version ();
 	micro = gtk_get_micro_version ();
-	g_snprintf (version, PAINT_CCH_VERSION, PAINT_FORMAT_VERSION, major, minor, micro);
-	gtk_about_dialog_set_version (dialog, version);
+	g_snprintf (people [PAINT_CREDIT_SECTION_LIBRARY_GTK], PAINT_CCH_VERSION, PAINT_FORMAT_LIBRARY_GTK, major, minor, micro);
+	gtk_about_dialog_add_credit_section (dialog, TEXT (text_title_library), (const char **) people);
 }
 
 /**

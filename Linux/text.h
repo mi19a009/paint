@@ -38,6 +38,7 @@ extern Text text_label_tool [];
 extern Text text_label_undo [];
 extern Text text_label_view [];
 extern Text text_title [];
+extern Text text_title_library [];
 extern Text text_title_open [];
 extern Text text_title_save [];
 extern Text text_tooltip_brush [];

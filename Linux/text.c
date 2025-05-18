@@ -94,6 +94,10 @@ Text text_title [TEXT_MAX] = {
 	"Paint",
 	"お絵かきソフト",
 };
+Text text_title_library [TEXT_MAX] = {
+	"Library",
+	"ライブラリ",
+};
 Text text_title_open [TEXT_MAX] = {
 	"Open File",
 	"ファイルを開く",

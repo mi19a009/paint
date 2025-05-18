@@ -41,7 +41,6 @@
 #define PAINT_COMMAND_SAVE_AS                   "win.save-as"
 #define PAINT_COMMAND_SELECT_ALL                "win.select-all"
 #define PAINT_COMMAND_UNDO                      "win.undo"
-#define PAINT_FORMAT_VERSION                    "GTK %u.%u.%u"
 #define PAINT_LOGO_ICON_NAME                    "application-x-executable"
 #define PAINT_MODE_BRUSH                        "brush"
 #define PAINT_MODE_ERASER                       "eraser"
@@ -132,4 +131,5 @@ extern const char *paint_application_authors [];
 extern const char *paint_application_copyright;
 extern const char *paint_application_id;
 extern const char *paint_application_name;
+extern const char *paint_application_version;
 extern const char *paint_application_website;

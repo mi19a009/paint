@@ -54,6 +54,7 @@ const char *paint_application_authors [] = { "Taichi Murakami", NULL };
 const char *paint_application_copyright = "Copyright © 2025 Taichi Murakami.";
 const char *paint_application_id = "com.github.mi19a009.paint";
 const char *paint_application_name = "Paint";
+const char *paint_application_version = "2025";
 const char *paint_application_website = "https://mi19a009.github.io/paint/";
 
 /**
