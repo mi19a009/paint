@@ -492,7 +492,7 @@ void paint_toolbar_click (GtkButton *button, gpointer action)
  */
 void paint_toolbar_init (GtkBox *toolbar)
 {
-	GtkWidget *button;
+	GtkWidget *button, *previous;
 	button = gtk_button_new ();
 
 	if (button) /* New */
@@ -562,24 +562,28 @@ void paint_toolbar_init (GtkBox *toolbar)
 		g_signal_connect (button, PAINT_SIGNAL_CLICKED, G_CALLBACK (paint_toolbar_click), PAINT_COMMAND_MODE);
 	}
 
+	previous = button;
 	button = gtk_toggle_button_new ();
 
-	if (button) /* Pencil */
+	if (button) /* Brush */
 	{
 		gtk_widget_set_css_classes (button, paint_toolbar_classes);
 		gtk_widget_set_tooltip_text (button, TEXT (text_tooltip_brush));
 		gtk_button_set_icon_name (GTK_BUTTON (button), GTK_ICON_NEW);
+		gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (button), GTK_TOGGLE_BUTTON (previous));
 		gtk_box_append (toolbar, button);
 		g_signal_connect (button, PAINT_SIGNAL_CLICKED, G_CALLBACK (paint_toolbar_click), PAINT_COMMAND_MODE);
 	}
 
+	previous = button;
 	button = gtk_toggle_button_new ();
 
-	if (button) /* Pencil */
+	if (button) /* Eraser */
 	{
 		gtk_widget_set_css_classes (button, paint_toolbar_classes);
 		gtk_widget_set_tooltip_text (button, TEXT (text_tooltip_eraser));
 		gtk_button_set_icon_name (GTK_BUTTON (button), GTK_ICON_NEW);
+		gtk_toggle_button_set_group (GTK_TOGGLE_BUTTON (button), GTK_TOGGLE_BUTTON (previous));
 		gtk_box_append (toolbar, button);
 		g_signal_connect (button, PAINT_SIGNAL_CLICKED, G_CALLBACK (paint_toolbar_click), PAINT_COMMAND_MODE);
 	}
