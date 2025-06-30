@@ -1,43 +1,29 @@
-﻿# お絵かきソフト ソリューション
+# Paint リポジトリ
 開発中。
 
-## 概要
-調整中。
+## Settings.json
+Visual Studio Code 用 Settings ファイルの内容を以下に示します。
 
-## 使用方法
-### インストール
-調整中。
-
-### 設定
-調整中。
-
-## ソリューション構成
-現在のソリューションに含まれるプロジェクトを以下に示します。
-
-### /docs ディレクトリ
-GitHub Pages 用 HTML 文書を記述します。
-
-### /win ディレクトリ
-このプロジェクトは Windows で実行可能なアプリケーションを作成します。
-Windows API を用いてアプリケーションを作成します。
-
-### /winforms ディレクトリ
-調整中。
-
-### /winrt ディレクトリ
-調整中。
-
-### /gtk ディレクトリ
-このプロジェクトは Linux で実行可能なアプリケーションを作成します。
-GTK を用いてアプリケーションを作成します。
-
-### /qt ディレクトリ
-調整中。
-
-## ライセンス
-
-このソフトウェアは Apache 2.0 でライセンスされました。
-
---------
-
-Copyright © 2025 Taichi Murakami.
+``` json: settings.json
+{
+	"C_Cpp.default.includePath": [
+		"/usr/include/blkid",
+		"/usr/include/cairo",
+		"/usr/include/freetype2",
+		"/usr/include/fribidi",
+		"/usr/include/gdk-pixbuf-2.0",
+		"/usr/include/glib-2.0",
+		"/usr/include/graphene-1.0",
+		"/usr/include/gtk-4.0",
+		"/usr/include/harfbuzz",
+		"/usr/include/libpng16",
+		"/usr/include/libmount",
+		"/usr/include/pango-1.0",
+		"/usr/include/pixman-1",
+		"/usr/include/x86_64-linux-gnu",
+		"/usr/include/webp",
+		"/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+		"/usr/lib/x86_64-linux-gnu/graphene-1.0/include",
+	]
+}
+```
