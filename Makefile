@@ -1,7 +1,8 @@
 # Make
-BUILD = echo $@ && $(MKDIR) && cd $@ && $(MKDIR) && $(MAKE) "OUTDIR = ../$(TARGET)" "OBJDIR = $(TARGET)"
-MKDIR = if test ! -e $(TARGET); then mkdir $(TARGET); fi
-RM = rm -fr
+BUILD  = echo $@ && $(MKDIR) && cd $@ && $(MKDIR) && $(MAKE) "OUTDIR = ../$(TARGET)" "OBJDIR = $(TARGET)"
+CFLAGS = -Wall
+MKDIR  = if test ! -e $(TARGET); then mkdir $(TARGET); fi
+RM     = rm -fr
 TARGET = build
 export CC CFLAGS RM
 .PHONY: all clean debug draw paint release text
