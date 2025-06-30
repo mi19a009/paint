@@ -11,7 +11,7 @@ GitHub Pages 用 HTML 文書を記述します。
 開発中。
 
 ## Text プロジェクト
-開発中。
+指定した CSV ファイルから C ソース ファイルやヘッダー ファイルを生成します。
 
 ## Settings ファイル
 Visual Studio Code 用 [Settings ファイル](.vscode/settings.json)の内容を以下に示します。
