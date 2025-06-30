@@ -6,7 +6,7 @@ RM     = rm -fr
 TARGET = build
 export CC CFLAGS RM
 .PHONY: all clean debug draw paint release text
-all: text
+all: paint
 clean:
 	$(RM) build debug release
 	cd draw  && $(MAKE) clean

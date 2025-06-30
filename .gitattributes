@@ -1,6 +1,7 @@
 # Git Attributes
 *.bmp           binary
 *.c             text
+*.csv           text
 *.filters       text eol=crlf
 *.h             text
 *.html          text eol=crlf
@@ -8,6 +9,7 @@
 *.json          text
 *.manifest      text eol=crlf
 *.md            text
+*.ods           binary
 *.rc            text eol=crlf working-tree-encoding=utf-16le-bom
 *.sln           text eol=crlf
 *.svg           text

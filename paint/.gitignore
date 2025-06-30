@@ -1,1 +1,3 @@
 # Git Ignore: Paint
+text.c
+text.h

@@ -1,5 +1,6 @@
 # Git Ignore
 ~*
+.~*
 ._*
 .DS_Store
 .vs

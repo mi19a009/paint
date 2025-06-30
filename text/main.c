@@ -16,7 +16,7 @@
 	"void text_language_init (void);\n\n" \
 	"enum _TextLanguage\n{\n"
 #define HEADER_ENUM L"\tTEXT_LANGUAGE_%ls,\n"
-#define HEADER_MAX L"\tTEXT_LANGUAGE_MAX,\n}\n\n"
+#define HEADER_MAX L"\tTEXT_LANGUAGE_MAX,\n};\n\n"
 #define HEADER_TEXT L"extern const char *TEXT_%1$ls_ [];\n" \
 	"#define            TEXT_%1$ls (TEXT_%1$ls_) [(text_language)]\n"
 #define SOURCE_BEGIN L"/* Text: Generated source file. */\n" \
