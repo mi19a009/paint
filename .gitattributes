@@ -13,3 +13,5 @@
 *.svg           text
 *.vcxproj       text eol=crlf
 *.xml           text
+LICENSE         text
+Makefile        text

@@ -1,10 +1,22 @@
-# Paint リポジトリ
+# Paint ソリューション
 開発中。
 
-## Settings.json
-Visual Studio Code 用 Settings ファイルの内容を以下に示します。
+## Docs プロジェクト
+GitHub Pages 用 HTML 文書を記述します。
 
-``` json: settings.json
+## Draw プロジェクト
+開発中。
+
+## Paint プロジェクト
+開発中。
+
+## Text プロジェクト
+開発中。
+
+## Settings ファイル
+Visual Studio Code 用 [Settings ファイル](.vscode/settings.json)の内容を以下に示します。
+
+``` json: .vscode/settings.json
 {
 	"C_Cpp.default.includePath": [
 		"/usr/include/blkid",
@@ -27,3 +39,7 @@ Visual Studio Code 用 Settings ファイルの内容を以下に示します。
 	]
 }
 ```
+
+--------
+
+Copyright © 2025 Taichi Murakami.
