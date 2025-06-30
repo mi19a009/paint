@@ -59,7 +59,7 @@ typedef struct tagRANGE
 	wchar_t value[CCH];
 } RANGE;
 
-static void cell(FILE *source, FILE *header, RANGE *range);
+static void cell(FILE *, FILE *, RANGE *);
 static int run(const char *, const char *, const char *);
 
 /*******************************************************************************
