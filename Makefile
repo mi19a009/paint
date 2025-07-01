@@ -8,10 +8,10 @@ export CC CFLAGS RM
 .PHONY: all clean debug draw paint release text
 all: paint
 clean:
-	$(RM) build debug release
-	cd draw  && $(MAKE) clean
-	cd paint && $(MAKE) clean
-	cd text  && $(MAKE) clean
+	@$(RM) build debug release
+	@cd draw  && $(MAKE) clean
+	@cd paint && $(MAKE) clean
+	@cd text  && $(MAKE) clean
 debug:
 	@$(MKDIR) && $(MAKE) "TARGET = $@" "CFLAGS = $(CFLAGS) -g"
 release:
