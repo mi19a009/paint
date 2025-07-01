@@ -10,6 +10,7 @@
 *.manifest      text eol=crlf
 *.md            text
 *.ods           binary
+*.png           binary
 *.rc            text eol=crlf working-tree-encoding=utf-16le-bom
 *.sln           text eol=crlf
 *.svg           text

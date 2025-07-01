@@ -5,6 +5,7 @@
 .DS_Store
 .vs
 .vscode
+*.xcf
 ARM
 ARM64
 Debug

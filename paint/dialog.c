@@ -2,13 +2,14 @@
 #include <gtk/gtk.h>
 #include "paint.h"
 #include "text.h"
-#define LOGO_ICON_NAME "application-x-executable"
 #define TEXT_COPYRIGHT "Copyright © 2025 Taichi Murakami."
 #define TEXT_VERSION   "2025"
 #define TEXT_WEBSITE   "https://mi19a009.github.io/paint/"
 
 static void
 paint_about_dialog_init (GtkAboutDialog *);
+static void
+paint_about_dialog_init_logo (GtkAboutDialog *dialog);
 
 /* バージョン情報ダイアログの内容 */
 static const char *
@@ -23,10 +24,23 @@ paint_about_dialog_init (GtkAboutDialog *dialog)
 	gtk_about_dialog_set_authors        (dialog, TEXT_AUTHORS);
 	gtk_about_dialog_set_copyright      (dialog, TEXT_COPYRIGHT);
 	gtk_about_dialog_set_license_type   (dialog, GTK_LICENSE_APACHE_2_0);
-	gtk_about_dialog_set_logo_icon_name (dialog, LOGO_ICON_NAME);
 	gtk_about_dialog_set_program_name   (dialog, TEXT_TITLE);
 	gtk_about_dialog_set_version        (dialog, TEXT_VERSION);
 	gtk_about_dialog_set_website        (dialog, TEXT_WEBSITE);
+	paint_about_dialog_init_logo (dialog);
+}
+
+void
+paint_about_dialog_init_logo (GtkAboutDialog *dialog)
+{
+	GdkTexture *logo;
+	logo = gdk_texture_new_from_resource ("/com/github/mi19a009/paint/resource/pencil.png");
+
+	if (logo)
+	{
+		gtk_about_dialog_set_logo (dialog, GDK_PAINTABLE (logo));
+		g_object_unref (logo);
+	}
 }
 
 /*******************************************************************************
