@@ -57,6 +57,7 @@ paint_menu_new_file (void)
 		if (section)
 		{
 			g_menu_append (section, TEXT_MENU_NEW, "app.new");
+			g_menu_append (section, TEXT_MENU_OPEN, "win.open");
 			g_menu_append_section (menu, NULL, G_MENU_MODEL (section));
 			g_object_unref (section);
 		}

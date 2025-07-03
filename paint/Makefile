@@ -1,12 +1,12 @@
 # Make: Paint
 C        = $(SRCECHO) && $(CC) $(CFLAGS) -c -o $@ $<
 MAKETEXT = $(OUTDIR)/text
-OBJ      = $(OBJIND) $(OBJTEXT) $(OBJUSER)
+OBJ      = $(OBJINDIE) $(OBJPAINT) $(OBJTEXT) $(OBJUSER)
 OBJECHO  = echo "$@ <- $(OBJ)"
-OBJIND   = $(addprefix $(OBJDIR)/, resource.o)
-#OBJPAINT = $(addprefix $(OBJDIR)/, )
+OBJINDIE = $(addprefix $(OBJDIR)/, resource.o)
+OBJPAINT = $(addprefix $(OBJDIR)/, layer.o)
 OBJTEXT  = $(addprefix $(OBJDIR)/, menu.o text.o)
-OBJUSER  = $(addprefix $(OBJDIR)/, dialog.o editor.o main.o)
+OBJUSER  = $(addprefix $(OBJDIR)/, editor.o main.o paint.o)
 OBJDIR   = .
 OUT      = $(OUTDIR)/paint
 OUTDIR   = .
@@ -22,7 +22,7 @@ clean:
 	@$(RM) build debug release $(OUTRES) $(OUTTEXT)
 $(OUT): $(OBJ)
 	@$(OBJECHO) && $(CC) $(CFLAGS) -o $@ $(OBJ) $(LIBS)
-$(OBJIND): $(OBJDIR)/%.o: %.c
+$(OBJINDIE): $(OBJDIR)/%.o: %.c
 	@$(C)
 $(OBJPAINT): $(OBJDIR)/%.o: %.c paint.h
 	@$(C)

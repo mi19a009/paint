@@ -52,6 +52,7 @@ static const PaintMainEntry
 paint_main_entries [] =
 {
 	{ "app.new",      "<Ctrl>N" },
+	{ "win.open",     "<Ctrl>O" },
 	{ "window.close", "<Ctrl>Q" },
 };
 
