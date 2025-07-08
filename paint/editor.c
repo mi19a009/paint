@@ -2,6 +2,8 @@
 #include <gtk/gtk.h>
 #include "paint.h"
 #include "text.h"
+#define PAINT_EDITOR_WINDOW_CCH_TITLE 256
+#define PAINT_EDITOR_WINDOW_FORMAT_TITLE "%s - %s"
 
 typedef void (*PaintEditorActivate) (GSimpleAction *, GVariant *, gpointer);
 typedef struct _PaintEditorActionEntry PaintEditorActionEntry;
@@ -17,15 +19,22 @@ struct _PaintEditorActionEntry
 struct _PaintEditorWindow
 {
 	GtkApplicationWindow parent_instance;
-	PaintLayer *layer;
-	GtkDrawingArea *canvas;
-	GtkScrolledWindow *client;
+	GFile               *file;
+	GtkDrawingArea      *canvas;
+	GtkScrolledWindow   *client;
+	PaintLayer          *layer;
+	guint8               closing;
+	guint8               modified;
 };
 
 static void
 paint_editor_window_activate_about (GSimpleAction *, GVariant *, gpointer);
 static void
 paint_editor_window_activate_open (GSimpleAction *, GVariant *, gpointer);
+static void
+paint_editor_window_activate_save (GSimpleAction *, GVariant *, gpointer);
+static void
+paint_editor_window_activate_save_as (GSimpleAction *, GVariant *, gpointer);
 static void
 paint_editor_window_class_init (PaintEditorWindowClass *);
 static gboolean
@@ -39,25 +48,49 @@ paint_editor_window_draw_canvas (GtkDrawingArea *, cairo_t *, int, int, gpointer
 static void
 paint_editor_window_init (PaintEditorWindow *);
 static void
+paint_editor_window_init_about_dialog (GtkAboutDialog *);
+static void
 paint_editor_window_init_actions (GActionMap *);
 void
 paint_editor_window_init_canvas (PaintEditorWindow *);
 static void
 paint_editor_window_init_client (PaintEditorWindow *);
 static void
+paint_editor_window_init_file_dialog (PaintEditorWindow *, GtkFileDialog *);
+static void
 paint_editor_window_init_layer (PaintEditorWindow *editor);
 static void
 paint_editor_window_init_window (GtkWindow *);
 static void
+paint_editor_window_present_dialog (GtkWindow *, GtkWindow *);
+//static void
+//paint_editor_window_present_tool (GtkWindow *, GtkWindow *);
+static void
+paint_editor_window_respond_closing (GObject *, GAsyncResult *, gpointer);
+static void
 paint_editor_window_respond_open (GObject *, GAsyncResult *, gpointer);
+static void
+paint_editor_window_respond_save (GObject *, GAsyncResult *, gpointer);
+static void
+paint_editor_window_show_about_dialog (PaintEditorWindow *);
+static void
+paint_editor_window_show_closing_dialog (PaintEditorWindow *);
+static void
+paint_editor_window_show_open_dialog (PaintEditorWindow *);
+static void
+paint_editor_window_show_save_dialog (PaintEditorWindow *);
+static void
+paint_editor_window_update_title (PaintEditorWindow *);
 
 G_DEFINE_FINAL_TYPE (PaintEditorWindow, paint_editor_window, GTK_TYPE_APPLICATION_WINDOW);
 
 /* メニュー */
 static const PaintEditorActionEntry paint_editor_action_entries [] =
 {
-	{ "about", paint_editor_window_activate_about },
-	{ "open",  paint_editor_window_activate_open  },
+	{ "about",   paint_editor_window_activate_about   },
+	{ "open",    paint_editor_window_activate_open    },
+	{ "save",    paint_editor_window_activate_save    },
+	{ "save-as", paint_editor_window_activate_save_as },
 };
 
 /*******************************************************************************
@@ -66,7 +99,7 @@ static const PaintEditorActionEntry paint_editor_action_entries [] =
 void
 paint_editor_window_activate_about (GSimpleAction *, GVariant *, gpointer self)
 {
-	paint_about_dialog_show (GTK_WINDOW (self));
+	paint_editor_window_show_about_dialog (PAINT_EDITOR_WINDOW (self));
 }
 
 /*******************************************************************************
@@ -75,7 +108,34 @@ paint_editor_window_activate_about (GSimpleAction *, GVariant *, gpointer self)
 void
 paint_editor_window_activate_open (GSimpleAction *, GVariant *, gpointer self)
 {
-	paint_file_dialog_show_open (GTK_WINDOW (self), paint_editor_window_respond_open, self);
+	paint_editor_window_show_open_dialog (PAINT_EDITOR_WINDOW (self));
+}
+
+/*******************************************************************************
+ * @brief メニュー: 上書き保存。
+ ******************************************************************************/
+void
+paint_editor_window_activate_save (GSimpleAction *, GVariant *, gpointer self)
+{
+	PaintEditorWindow *editor;
+	editor = PAINT_EDITOR_WINDOW (self);
+
+	if (editor->modified)
+	{
+		paint_editor_window_show_save_dialog (editor);
+	}
+	else
+	{
+	}
+}
+
+/*******************************************************************************
+ * @brief メニュー: 名前を付けて保存。
+ ******************************************************************************/
+void
+paint_editor_window_activate_save_as (GSimpleAction *, GVariant *, gpointer self)
+{
+	paint_editor_window_show_save_dialog (PAINT_EDITOR_WINDOW (self));
 }
 
 /*******************************************************************************
@@ -99,7 +159,17 @@ paint_editor_window_class_init (PaintEditorWindowClass *editor)
 gboolean
 paint_editor_window_close (GtkWindow *window)
 {
-	return GTK_WINDOW_CLASS (paint_editor_window_parent_class)->close_request (window);
+	PaintEditorWindow *editor;
+	gboolean result;
+	editor = PAINT_EDITOR_WINDOW (window);
+	result = editor->modified;
+
+	if (result)
+	{
+		paint_editor_window_show_closing_dialog (editor);
+	}
+
+	return result;
 }
 
 /*******************************************************************************
@@ -108,7 +178,8 @@ paint_editor_window_close (GtkWindow *window)
 void
 paint_editor_window_destroy (PaintEditorWindow *editor)
 {
-	g_clear_object (&editor->layer);
+	g_clear_object  (&editor->file);
+	g_clear_object  (&editor->layer);
 }
 
 /*******************************************************************************
@@ -122,8 +193,21 @@ paint_editor_window_dispose (GObject *object)
 }
 
 void
-paint_editor_window_draw_canvas (GtkDrawingArea *, cairo_t *, int, int, gpointer)
+paint_editor_window_draw_canvas (GtkDrawingArea *, cairo_t *cairo, int, int, gpointer self)
 {
+	PaintEditorWindow *editor;
+	editor = PAINT_EDITOR_WINDOW (self);
+	cairo_set_source_surface (cairo, paint_layer_get_surface (editor->layer), 0, 0);
+	cairo_paint (cairo);
+}
+
+/*******************************************************************************
+ * @brief 現在のファイルを取得する。
+ ******************************************************************************/
+GFile *
+paint_editor_window_get_file (PaintEditorWindow *editor)
+{
+	return g_object_ref (editor->file);
 }
 
 /*******************************************************************************
@@ -133,10 +217,35 @@ void
 paint_editor_window_init (PaintEditorWindow *editor)
 {
 	paint_editor_window_init_actions (G_ACTION_MAP (editor));
-	paint_editor_window_init_window (GTK_WINDOW (editor));
-	paint_editor_window_init_client (editor);
-	paint_editor_window_init_canvas (editor);
-	paint_editor_window_init_layer (editor);
+	paint_editor_window_init_window  (GTK_WINDOW (editor));
+	paint_editor_window_init_client  (editor);
+	paint_editor_window_init_canvas  (editor);
+	paint_editor_window_init_layer   (editor);
+}
+
+/*******************************************************************************
+ * @brief バージョン情報ダイアログ ボックスを初期化する。
+ * @param dialog ダイアログ ボックス。
+ ******************************************************************************/
+void
+paint_editor_window_init_about_dialog (GtkAboutDialog *dialog)
+{
+	GdkTexture *logo;
+	char path [PAINT_RESOURCE_PATH_CCH];
+	gtk_about_dialog_set_authors        (dialog, TEXT_AUTHORS);
+	gtk_about_dialog_set_copyright      (dialog, TEXT_COPYRIGHT);
+	gtk_about_dialog_set_license_type   (dialog, GTK_LICENSE_APACHE_2_0);
+	gtk_about_dialog_set_program_name   (dialog, TEXT_TITLE);
+	gtk_about_dialog_set_version        (dialog, TEXT_VERSION);
+	gtk_about_dialog_set_website        (dialog, TEXT_WEBSITE);
+	paint_resource_format_path (path, PAINT_RESOURCE_PATH_CCH, "pencil.png");
+	logo = gdk_texture_new_from_resource (path);
+
+	if (logo)
+	{
+		gtk_about_dialog_set_logo (dialog, GDK_PAINTABLE (logo));
+		g_object_unref (logo);
+	}
 }
 
 /*******************************************************************************
@@ -207,6 +316,27 @@ paint_editor_window_init_client (PaintEditorWindow *editor)
 }
 
 /*******************************************************************************
+ * @brief ファイル ダイアログ ボックスを初期化する。
+ * @param dialog ダイアログ ボックス。
+ ******************************************************************************/
+void
+paint_editor_window_init_file_dialog (PaintEditorWindow *editor, GtkFileDialog *dialog)
+{
+	GListModel *filters;
+	filters = paint_file_filter_list_new ();
+
+	if (filters)
+	{
+		gtk_file_dialog_set_filters (dialog, filters);
+		g_object_unref (filters);
+	}
+	if (editor->file)
+	{
+		gtk_file_dialog_set_initial_file (dialog, editor->file);
+	}
+}
+
+/*******************************************************************************
  * @brief レイヤーを初期化する。
  ******************************************************************************/
 void
@@ -233,6 +363,18 @@ paint_editor_window_init_window (GtkWindow *window)
 	gtk_window_set_title (window, TEXT_TITLE);
 }
 
+void
+paint_editor_window_load (PaintEditorWindow *editor, GFile *file)
+{
+	if (editor->layer)
+	{
+		g_object_unref (editor->layer);
+	}
+
+	editor->layer = paint_layer_new_from_file (file, 0);
+	gtk_widget_queue_draw (GTK_WIDGET (editor->canvas));
+}
+
 /*******************************************************************************
  * @brief クラスのインスタンスを作成する。
  * @param application ウィンドウが属するアプリケーション。
@@ -247,22 +389,201 @@ paint_editor_window_new (GApplication *application)
 		NULL);
 }
 
+/*******************************************************************************
+ * @brief ダイアログ ウィンドウを表示します。
+ * @param parent 親ウィンドウ。
+ * @param modal モーダル ウィンドウ。
+ ******************************************************************************/
+void
+paint_editor_window_present_dialog (GtkWindow *parent, GtkWindow *modal)
+{
+	gtk_window_set_destroy_with_parent (modal, TRUE);
+	gtk_window_set_modal               (modal, TRUE);
+	gtk_window_set_transient_for       (modal, parent);
+	gtk_window_present                 (modal);
+}
+
+/*******************************************************************************
+ * @brief ファイルを保存するかどうかを選択した。
+ * @param object Alert Dialog クラスのインスタンス。
+ ******************************************************************************/
+void
+paint_editor_window_respond_closing (GObject *object, GAsyncResult *result, gpointer self)
+{
+	int response;
+	response = gtk_alert_dialog_choose_finish (GTK_ALERT_DIALOG (object), result, NULL);
+
+	switch (response)
+	{
+	case PAINT_CLOSING_RESPONSE_CANCEL:
+		break;
+	case PAINT_CLOSING_RESPONSE_DESTROY:
+		g_idle_add_once ((GSourceOnceFunc) gtk_window_destroy, self);
+		break;
+	case PAINT_CLOSING_RESPONSE_SAVE:
+		paint_editor_window_show_save_dialog (PAINT_EDITOR_WINDOW (self));
+		break;
+	default:
+		g_assert_not_reached ();
+		break;
+	}
+}
+
+/*******************************************************************************
+ * @brief 開くファイルを選択した。
+ * @param object File Dialog クラスのインスタンス。
+ ******************************************************************************/
 void
 paint_editor_window_respond_open (GObject *object, GAsyncResult *result, gpointer self)
 {
 	GFile *file;
-	char *path;
+	PaintEditorWindow *editor;
 	file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (object), result, NULL);
 
 	if (file)
 	{
-		path = g_file_get_path (file);
-
-		if (path)
-		{
-			g_free (path);
-		}
-
+		editor = PAINT_EDITOR_WINDOW (self);
+		paint_editor_window_set_file (editor, file);
+		paint_editor_window_load (editor, file);
 		g_object_unref (file);
+	}
+}
+
+/*******************************************************************************
+ * @brief 保存するファイルを選択した。
+ * @param object File Dialog クラスのインスタンス。
+ ******************************************************************************/
+void
+paint_editor_window_respond_save (GObject *object, GAsyncResult *result, gpointer self)
+{
+	GFile *file;
+	file = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (object), result, NULL);
+
+	if (file)
+	{
+		g_object_unref (file);
+	}
+}
+
+/*******************************************************************************
+ * @brief 現在のファイルを設定する。
+ ******************************************************************************/
+void
+paint_editor_window_set_file (PaintEditorWindow *editor, GFile *file)
+{
+	if (editor->file)
+	{
+		g_object_unref (editor->file);
+	}
+	if (file)
+	{
+		editor->file = g_object_ref (file);
+	}
+	else
+	{
+		editor->file = NULL;
+	}
+
+	paint_editor_window_update_title (editor);
+}
+
+/*******************************************************************************
+ * @brief バージョン情報ダイアログ ボックスを表示する。
+ ******************************************************************************/
+void
+paint_editor_window_show_about_dialog (PaintEditorWindow *editor)
+{
+	GtkWidget *dialog;
+	dialog = gtk_about_dialog_new ();
+
+	if (dialog)
+	{
+		g_signal_connect_swapped (dialog, "destroy", G_CALLBACK (gtk_window_destroy), dialog);
+		paint_editor_window_init_about_dialog (GTK_ABOUT_DIALOG (dialog));
+		paint_editor_window_present_dialog (GTK_WINDOW (editor), GTK_WINDOW (dialog));
+	}
+}
+
+/*******************************************************************************
+ * @brief ドキュメントを閉じるダイアログ ボックスを表示する。
+ ******************************************************************************/
+void
+paint_editor_window_show_closing_dialog (PaintEditorWindow *editor)
+{
+	const char *labels [PAINT_CLOSING_RESPONSE_MAX];
+	GtkAlertDialog *dialog;
+	dialog = gtk_alert_dialog_new ("Alert Dialog");
+
+	if (dialog)
+	{
+		labels [PAINT_CLOSING_RESPONSE_CANCEL]  = "_Cancel";
+		labels [PAINT_CLOSING_RESPONSE_DESTROY] = "_Destroy";
+		labels [PAINT_CLOSING_RESPONSE_SAVE]    = "_Save";
+		gtk_alert_dialog_set_buttons        (dialog, labels);
+		gtk_alert_dialog_set_cancel_button  (dialog, PAINT_CLOSING_RESPONSE_CANCEL);
+		gtk_alert_dialog_set_default_button (dialog, PAINT_CLOSING_RESPONSE_SAVE);
+		gtk_alert_dialog_set_detail         (dialog, "Details");;
+		gtk_alert_dialog_set_message        (dialog, "Message");
+		gtk_alert_dialog_set_modal          (dialog, TRUE);
+		gtk_alert_dialog_choose             (dialog, GTK_WINDOW (editor), NULL, paint_editor_window_respond_closing, editor);
+		g_object_unref                      (dialog);
+	}
+}
+
+/*******************************************************************************
+ * @brief ファイルを開くダイアログ ボックスを表示する。
+ ******************************************************************************/
+void
+paint_editor_window_show_open_dialog (PaintEditorWindow *editor)
+{
+	GtkFileDialog *dialog;
+	dialog = gtk_file_dialog_new ();
+
+	if (dialog)
+	{
+		paint_editor_window_init_file_dialog (editor, dialog);
+		gtk_file_dialog_set_title (dialog, "Open File");
+		gtk_file_dialog_open (dialog, GTK_WINDOW (editor), NULL, paint_editor_window_respond_open, editor);
+		g_object_unref (dialog);
+	}
+}
+
+/*******************************************************************************
+ * @brief ファイルを保存ダイアログ ボックスを表示する。
+ ******************************************************************************/
+void
+paint_editor_window_show_save_dialog (PaintEditorWindow *editor)
+{
+	GtkFileDialog *dialog;
+	dialog = gtk_file_dialog_new ();
+
+	if (dialog)
+	{
+		paint_editor_window_init_file_dialog (editor, dialog);
+		gtk_file_dialog_set_title (dialog, "Save File");
+		gtk_file_dialog_save (dialog, GTK_WINDOW (editor), NULL, paint_editor_window_respond_save, editor);
+		g_object_unref (dialog);
+	}
+}
+
+/*******************************************************************************
+ * @brief ウィンドウ タイトルを更新する。
+ ******************************************************************************/
+void
+paint_editor_window_update_title (PaintEditorWindow *editor)
+{
+	char *name;
+	char title [PAINT_EDITOR_WINDOW_CCH_TITLE];
+
+	if (editor->file)
+	{
+		name = g_file_get_basename (editor->file);
+
+		if (name)
+		{
+			snprintf (title, PAINT_EDITOR_WINDOW_CCH_TITLE, PAINT_EDITOR_WINDOW_FORMAT_TITLE, name, TEXT_TITLE);
+			g_free (name);
+			gtk_window_set_title (GTK_WINDOW (editor), title);
+		}
 	}
 }

@@ -20,6 +20,16 @@ typedef struct _cairo_surface     PaintSurface;
 typedef struct _PaintViewerWindow PaintViewerWindow;
 typedef enum   _PaintVisibility   PaintVisibility;
 
+/* ドキュメントを閉じるダイアログ ボックスの結果 */
+enum _PaintClosingResponse
+{
+	PAINT_CLOSING_RESPONSE_CANCEL,
+	PAINT_CLOSING_RESPONSE_DESTROY,
+	PAINT_CLOSING_RESPONSE_SAVE,
+	PAINT_CLOSING_RESPONSE_MAX,
+};
+
+/* レイヤーの状態 */
 enum _PaintVisibility
 {
 	PAINT_VISIBILITY_EDIT,
@@ -27,14 +37,23 @@ enum _PaintVisibility
 	PAINT_VISIBILITY_HIDDEN,
 };
 
+extern const char *
+TEXT_AUTHORS [];
+extern const char *
+TEXT_COPYRIGHT;
+extern const char *
+TEXT_VERSION;
+extern const char *
+TEXT_WEBSITE;
+
+GFile *
+paint_editor_window_get_file (PaintEditorWindow *editor);
 void
-paint_about_dialog_show (GtkWindow *parent);
+paint_editor_window_load (PaintEditorWindow *editor, GFile *file);
 GtkWidget *
 paint_editor_window_new (GApplication *application);
 void
-paint_file_dialog_show_open (GtkWindow *parent, GAsyncReadyCallback callback, gpointer user_data);
-void
-paint_file_dialog_show_save (GtkWindow *parent, GAsyncReadyCallback callback, gpointer user_data);
+paint_editor_window_set_file (PaintEditorWindow *editor, GFile *file);
 GListModel *
 paint_file_filter_list_new (void);
 int
@@ -51,6 +70,10 @@ int
 paint_layer_get_width (PaintLayer *layer);
 PaintLayer *
 paint_layer_new (int width, int height, unsigned n_planes);
+PaintLayer *
+paint_layer_new_from_file (GFile *file, unsigned n_planes);
+void
+paint_layer_reset (PaintLayer *layer, PaintSurface *surface, unsigned n_planes);
 void
 paint_layer_set_name (PaintLayer *layer, const char *name);
 void
@@ -61,6 +84,8 @@ GMenuModel *
 paint_menu_new (void);
 int
 paint_resource_format_path (char *resource_path, size_t resource_path_cch, const char *resource_name);
+PaintSurface *
+paint_surface_new_from_file (GFile *file);
 
 #ifdef PAINT_USING_GLIB
 
