@@ -177,63 +177,63 @@ paint_resource_format_path (char *resource_path, size_t resource_path_cch, const
 }
 
 void
-paint_surface_init_channel_1 (guchar *data, const guchar *pixels, int width, int height, int stride)
+paint_surface_init_channel_1 (guchar *destination, const guchar *source, int width, int height, int stride)
 {
 	const guchar *p;
 	int x, y, z;
 
 	for (y = 0; y < height; y++)
 	{
-		p = pixels + y * stride;
+		p = source + y * stride;
 
 		for (x = 0; x < width; x++)
 		{
 			z = *(p++);
-			*(data++) = z;
-			*(data++) = z;
-			*(data++) = z;
-			*(data++) = G_MAXUINT8;
+			/* B */ *(destination++) = z;
+			/* G */ *(destination++) = z;
+			/* R */ *(destination++) = z;
+			/* A */ *(destination++) = G_MAXUINT8;
 		}
 	}
 }
 
 void
-paint_surface_init_channel_3 (guchar *data, const guchar *pixels, int width, int height, int stride)
+paint_surface_init_channel_3 (guchar *destination, const guchar *source, int width, int height, int stride)
 {
 	const guchar *p;
 	int x, y;
 
 	for (y = 0; y < height; y++)
 	{
-		p = pixels + y * stride;
+		p = source + y * stride;
 
 		for (x = 0; x < width; x++)
 		{
-			*(data++) = p [2];
-			*(data++) = p [1];
-			*(data++) = p [0];
-			*(data++) = G_MAXUINT8;
-			p += 4;
+			/* B */ *(destination++) = p [2];
+			/* G */ *(destination++) = p [1];
+			/* R */ *(destination++) = p [0];
+			/* A */ *(destination++) = G_MAXUINT8;
+			p += 3;
 		}
 	}
 }
 
 void
-paint_surface_init_channel_4 (guchar *data, const guchar *pixels, int width, int height, int stride)
+paint_surface_init_channel_4 (guchar *destination, const guchar *source, int width, int height, int stride)
 {
 	const guchar *p;
 	int x, y;
 
 	for (y = 0; y < height; y++)
 	{
-		p = pixels + y * stride;
+		p = source + y * stride;
 
 		for (x = 0; x < width; x++)
 		{
-			/* B */ *(data++) = p [2];
-			/* G */ *(data++) = p [1];
-			/* R */ *(data++) = p [0];
-			/* A */ *(data++) = p [3];
+			/* B */ *(destination++) = p [2];
+			/* G */ *(destination++) = p [1];
+			/* R */ *(destination++) = p [0];
+			/* A */ *(destination++) = p [3];
 			p += 4;
 		}
 	}
@@ -245,58 +245,70 @@ paint_surface_init_channel_4 (guchar *data, const guchar *pixels, int width, int
  * @return 作成したサーフィスを返す。
  ******************************************************************************/
 PaintSurface *
-paint_surface_new_from_file (GFile *file)
+paint_surface_new_from_file (GFile *file, cairo_t *context, GError **error)
 {
-	cairo_surface_t *surface;
+	cairo_surface_t *surface, *image;
 	GFileInputStream *input;
-	GdkPixbuf *pixbuf;
-	const guchar *pixels;
-	guchar *data;
+	GdkPixbuf *bitmap;
 	PaintSurfaceInitChannel init;
-	int width, height, stride, n_channels;
+	guchar *data;
+	int width, height;
 	surface = NULL;
 	input = g_file_read (file, NULL, NULL);
 
 	if (input)
 	{
-		pixbuf = gdk_pixbuf_new_from_stream (G_INPUT_STREAM (input), NULL, NULL);
+		bitmap = gdk_pixbuf_new_from_stream (G_INPUT_STREAM (input), NULL, error);
+		g_object_unref (input);
 
-		if (pixbuf)
+		if (bitmap)
 		{
-			width = gdk_pixbuf_get_width (pixbuf);
-			height = gdk_pixbuf_get_height (pixbuf);
-			//width = 256;
-			//height = 256;
-			data = g_malloc (width * height * (size_t) PAINT_SURFACE_N_CHANNELS);
+			width = gdk_pixbuf_get_width (bitmap);
+			height = gdk_pixbuf_get_height (bitmap);
+			data = g_malloc_n (PAINT_SURFACE_N_CHANNELS, (size_t) width * height);
 
 			if (data)
 			{
-				pixels = gdk_pixbuf_get_pixels (pixbuf);
-				stride = gdk_pixbuf_get_rowstride (pixbuf);
-				n_channels = gdk_pixbuf_get_n_channels (pixbuf);
+				image = cairo_image_surface_create_for_data (data, CAIRO_FORMAT_ARGB32, width, height, gdk_pixbuf_get_rowstride (bitmap));
 
-				switch (n_channels)
+				if (image)
 				{
-				case 3:
-					init = paint_surface_init_channel_3;
-					break;
-				case 4:
-					init = paint_surface_init_channel_4;
-					break;
-				default:
-					init = paint_surface_init_channel_1;
-					break;
+					surface = cairo_surface_create_similar (cairo_get_target (context), CAIRO_CONTENT_COLOR_ALPHA, width, height);
+
+					if (surface)
+					{
+						context = cairo_create (surface);
+
+						if (context)
+						{
+							switch (gdk_pixbuf_get_n_channels (bitmap))
+							{
+							case 3:
+								init = paint_surface_init_channel_3;
+								break;
+							case 4:
+								init = paint_surface_init_channel_4;
+								break;
+							default:
+								init = paint_surface_init_channel_1;
+								break;
+							}
+
+							init (data, gdk_pixbuf_get_pixels (bitmap), width, height, gdk_pixbuf_get_rowstride (bitmap));
+							cairo_set_source_surface (context, image, 0, 0);
+							cairo_paint (context);
+							cairo_destroy (context);
+						}
+					}
+
+					cairo_surface_destroy (image);
 				}
 
-				init (data, pixels, width, height, stride);
-				surface = cairo_image_surface_create_for_data (data, CAIRO_FORMAT_ARGB32, width, height, stride);
-				//g_free (data);
+				g_free (data);
 			}
 
-			g_object_unref (pixbuf);
+			g_object_unref (bitmap);
 		}
-
-		g_object_unref (input);
 	}
 
 	return surface;

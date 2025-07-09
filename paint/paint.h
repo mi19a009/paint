@@ -91,7 +91,7 @@ paint_menu_new (void);
 int
 paint_resource_format_path (char *resource_path, size_t resource_path_cch, const char *resource_name);
 PaintSurface *
-paint_surface_new_from_file (GFile *file);
+paint_surface_new_from_file (GFile *file, cairo_t *context, GError **error);
 
 #ifdef PAINT_USING_GLIB
 
