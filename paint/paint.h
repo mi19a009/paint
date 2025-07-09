@@ -7,6 +7,7 @@
 #define PAINT_USING_GTK
 #endif /* GTK */
 #define PAINT_APPLICATION_ID "com.github.mi19a009.paint"
+#define PAINT_ZOOM_DEFAULT_VALUE 100
 #define PAINT_RESOURCE_PATH_CCH 64
 
 typedef struct _GApplication      GApplication;
@@ -16,6 +17,7 @@ typedef struct _GtkWindow         GtkWindow;
 typedef struct _PaintEditorWindow PaintEditorWindow;
 typedef struct _PaintLayer        PaintLayer;
 typedef struct _PaintMain         PaintMain;
+typedef struct _PaintMemento      PaintMemento;
 typedef struct _cairo_surface     PaintSurface;
 typedef struct _PaintViewerWindow PaintViewerWindow;
 typedef enum   _PaintVisibility   PaintVisibility;
@@ -37,6 +39,12 @@ enum _PaintVisibility
 	PAINT_VISIBILITY_HIDDEN,
 };
 
+struct _PaintMemento
+{
+	PaintSurface *surface;
+	PaintLayer *layer;
+};
+
 extern const char *
 TEXT_AUTHORS [];
 extern const char *
@@ -46,14 +54,12 @@ TEXT_VERSION;
 extern const char *
 TEXT_WEBSITE;
 
-GFile *
-paint_editor_window_get_file (PaintEditorWindow *editor);
+int
+muldiv (int number, int numerator, int denominator);
 void
 paint_editor_window_load (PaintEditorWindow *editor, GFile *file);
 GtkWidget *
 paint_editor_window_new (GApplication *application);
-void
-paint_editor_window_set_file (PaintEditorWindow *editor, GFile *file);
 GListModel *
 paint_file_filter_list_new (void);
 int

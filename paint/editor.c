@@ -2,8 +2,8 @@
 #include <gtk/gtk.h>
 #include "paint.h"
 #include "text.h"
-#define PAINT_EDITOR_WINDOW_CCH_TITLE 256
-#define PAINT_EDITOR_WINDOW_FORMAT_TITLE "%s - %s"
+#define PAINT_EDITOR_WINDOW_TITLE_CCH 256
+#define PAINT_EDITOR_WINDOW_TITLE_FORMAT "%s - %s"
 
 typedef void (*PaintEditorActivate) (GSimpleAction *, GVariant *, gpointer);
 typedef struct _PaintEditorActionEntry PaintEditorActionEntry;
@@ -19,10 +19,15 @@ struct _PaintEditorActionEntry
 struct _PaintEditorWindow
 {
 	GtkApplicationWindow parent_instance;
-	GFile               *file;
+	char                *name; /* タイトル バー上に表示される名前 */
+	cairo_surface_t     *surface; /* キャンバス上に描画される画像 */
+	GFile               *file; /* 開いたファイル */
+	GtkBox              *content;
 	GtkDrawingArea      *canvas;
 	GtkScrolledWindow   *client;
-	PaintLayer          *layer;
+	gint                 content_width;
+	gint                 content_height;
+	gint                 zoom;
 	guint8               closing;
 	guint8               modified;
 };
@@ -51,14 +56,14 @@ static void
 paint_editor_window_init_about_dialog (GtkAboutDialog *);
 static void
 paint_editor_window_init_actions (GActionMap *);
-void
+static void
 paint_editor_window_init_canvas (PaintEditorWindow *);
 static void
 paint_editor_window_init_client (PaintEditorWindow *);
 static void
-paint_editor_window_init_file_dialog (PaintEditorWindow *, GtkFileDialog *);
+paint_editor_window_init_content (PaintEditorWindow *);
 static void
-paint_editor_window_init_layer (PaintEditorWindow *editor);
+paint_editor_window_init_file_dialog (PaintEditorWindow *, GtkFileDialog *);
 static void
 paint_editor_window_init_window (GtkWindow *);
 static void
@@ -72,6 +77,12 @@ paint_editor_window_respond_open (GObject *, GAsyncResult *, gpointer);
 static void
 paint_editor_window_respond_save (GObject *, GAsyncResult *, gpointer);
 static void
+paint_editor_window_set_file (PaintEditorWindow *, GFile *);
+static void
+paint_editor_window_set_name (PaintEditorWindow *, const char *);
+static void
+paint_editor_window_set_surface (PaintEditorWindow *, cairo_surface_t *);
+static void
 paint_editor_window_show_about_dialog (PaintEditorWindow *);
 static void
 paint_editor_window_show_closing_dialog (PaintEditorWindow *);
@@ -79,6 +90,8 @@ static void
 paint_editor_window_show_open_dialog (PaintEditorWindow *);
 static void
 paint_editor_window_show_save_dialog (PaintEditorWindow *);
+static void
+paint_editor_window_update_canvas (PaintEditorWindow *editor);
 static void
 paint_editor_window_update_title (PaintEditorWindow *);
 
@@ -178,8 +191,9 @@ paint_editor_window_close (GtkWindow *window)
 void
 paint_editor_window_destroy (PaintEditorWindow *editor)
 {
-	g_clear_object  (&editor->file);
-	g_clear_object  (&editor->layer);
+	g_clear_pointer (&editor->name, g_free);
+	g_clear_pointer (&editor->surface, cairo_surface_destroy);
+	g_clear_object (&editor->file);
 }
 
 /*******************************************************************************
@@ -192,22 +206,20 @@ paint_editor_window_dispose (GObject *object)
 	G_OBJECT_CLASS (paint_editor_window_parent_class)->dispose (object);
 }
 
+/*******************************************************************************
+ * @brief キャンバス上にサーフィスを描画する。
+ ******************************************************************************/
 void
 paint_editor_window_draw_canvas (GtkDrawingArea *, cairo_t *cairo, int, int, gpointer self)
 {
 	PaintEditorWindow *editor;
 	editor = PAINT_EDITOR_WINDOW (self);
-	cairo_set_source_surface (cairo, paint_layer_get_surface (editor->layer), 0, 0);
-	cairo_paint (cairo);
-}
 
-/*******************************************************************************
- * @brief 現在のファイルを取得する。
- ******************************************************************************/
-GFile *
-paint_editor_window_get_file (PaintEditorWindow *editor)
-{
-	return g_object_ref (editor->file);
+	if (editor->surface)
+	{
+		cairo_set_source_surface (cairo, editor->surface, 0, 0);
+		cairo_paint (cairo);
+	}
 }
 
 /*******************************************************************************
@@ -216,11 +228,12 @@ paint_editor_window_get_file (PaintEditorWindow *editor)
 void
 paint_editor_window_init (PaintEditorWindow *editor)
 {
+	editor->zoom = PAINT_ZOOM_DEFAULT_VALUE;
 	paint_editor_window_init_actions (G_ACTION_MAP (editor));
 	paint_editor_window_init_window  (GTK_WINDOW (editor));
+	paint_editor_window_init_content (editor);
 	paint_editor_window_init_client  (editor);
 	paint_editor_window_init_canvas  (editor);
-	paint_editor_window_init_layer   (editor);
 }
 
 /*******************************************************************************
@@ -280,17 +293,17 @@ paint_editor_window_init_actions (GActionMap *actions)
 void
 paint_editor_window_init_canvas (PaintEditorWindow *editor)
 {
-	GtkWidget *canvas;
+	GtkWidget *widget;
 
-	if (!editor->canvas && editor->client)
+	if (editor->client)
 	{
-		canvas = gtk_drawing_area_new ();
+		widget = gtk_drawing_area_new ();
 
-		if (canvas)
+		if (widget)
 		{
-			editor->canvas = GTK_DRAWING_AREA (canvas);
+			editor->canvas = GTK_DRAWING_AREA (widget);
 			gtk_drawing_area_set_draw_func (editor->canvas, paint_editor_window_draw_canvas, editor, NULL);
-			gtk_scrolled_window_set_child (editor->client, canvas);
+			gtk_scrolled_window_set_child (editor->client, widget);
 		}
 	}
 }
@@ -301,17 +314,34 @@ paint_editor_window_init_canvas (PaintEditorWindow *editor)
 void
 paint_editor_window_init_client (PaintEditorWindow *editor)
 {
-	GtkWidget *client;
+	GtkWidget *widget;
 
-	if (!editor->client)
+	if (editor->content)
 	{
-		client = gtk_scrolled_window_new ();
+		widget = gtk_scrolled_window_new ();
 
-		if (client)
+		if (widget)
 		{
-			editor->client = GTK_SCROLLED_WINDOW (client);
-			gtk_window_set_child (GTK_WINDOW (editor), client);
+			editor->client = GTK_SCROLLED_WINDOW (widget);
+			gtk_widget_set_vexpand (widget, TRUE);
+			gtk_box_append (editor->content, widget);
 		}
+	}
+}
+
+/*******************************************************************************
+ * @brief ボックスを作成する。
+ ******************************************************************************/
+void
+paint_editor_window_init_content (PaintEditorWindow *editor)
+{
+	GtkWidget *widget;
+	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+	if (widget)
+	{
+		editor->content = GTK_BOX (widget);
+		gtk_window_set_child (GTK_WINDOW (editor), widget);
 	}
 }
 
@@ -337,23 +367,6 @@ paint_editor_window_init_file_dialog (PaintEditorWindow *editor, GtkFileDialog *
 }
 
 /*******************************************************************************
- * @brief レイヤーを初期化する。
- ******************************************************************************/
-void
-paint_editor_window_init_layer (PaintEditorWindow *editor)
-{
-	GtkDrawingArea *canvas;
-	int width, height, n_planes;
-	width = 16;
-	height = 16;
-	n_planes = 4;
-	canvas = GTK_DRAWING_AREA (editor->canvas);
-	editor->layer = paint_layer_new (width, height, n_planes);
-	gtk_drawing_area_set_content_width (canvas, width);
-	gtk_drawing_area_set_content_height (canvas, height);
-}
-
-/*******************************************************************************
  * @brief 現在のウィンドウを初期化する。
  ******************************************************************************/
 void
@@ -363,16 +376,25 @@ paint_editor_window_init_window (GtkWindow *window)
 	gtk_window_set_title (window, TEXT_TITLE);
 }
 
+/*******************************************************************************
+ * @brief 指定したファイルを開くする。
+ * @param file 開くファイル。
+ ******************************************************************************/
 void
 paint_editor_window_load (PaintEditorWindow *editor, GFile *file)
 {
-	if (editor->layer)
-	{
-		g_object_unref (editor->layer);
-	}
+	cairo_surface_t *surface;
+	surface = paint_surface_new_from_file (file);
 
-	editor->layer = paint_layer_new_from_file (file, 0);
-	gtk_widget_queue_draw (GTK_WIDGET (editor->canvas));
+	if (surface)
+	{
+		editor->content_width = cairo_image_surface_get_width (surface);
+		editor->content_height = cairo_image_surface_get_height (surface);
+		paint_editor_window_set_surface (editor, surface);
+		paint_editor_window_update_canvas (editor);
+		gtk_widget_queue_draw (GTK_WIDGET (editor->canvas));
+		cairo_surface_destroy (surface);
+	}
 }
 
 /*******************************************************************************
@@ -444,6 +466,7 @@ paint_editor_window_respond_open (GObject *object, GAsyncResult *result, gpointe
 	{
 		editor = PAINT_EDITOR_WINDOW (self);
 		paint_editor_window_set_file (editor, file);
+		paint_editor_window_update_title (editor);
 		paint_editor_window_load (editor, file);
 		g_object_unref (file);
 	}
@@ -483,8 +506,57 @@ paint_editor_window_set_file (PaintEditorWindow *editor, GFile *file)
 	{
 		editor->file = NULL;
 	}
+}
 
-	paint_editor_window_update_title (editor);
+/*******************************************************************************
+ * @brief ドキュメントの名前を設定する。
+ ******************************************************************************/
+void
+paint_editor_window_set_name (PaintEditorWindow *editor, const char *name)
+{
+	char *buffer;
+	size_t size;
+
+	if (name)
+	{
+		size = strlen (name) + 1;
+
+		if (editor->name)
+		{
+			buffer = g_realloc (editor->name, size);
+		}
+		else
+		{
+			buffer = g_malloc (size);
+		}
+		if (buffer)
+		{
+			memcpy (buffer, name, size);
+			editor->name = buffer;
+		}
+	}
+	else if (editor->name)
+	{
+		g_free (editor->name);
+		editor->name = NULL;
+	}
+}
+
+void
+paint_editor_window_set_surface (PaintEditorWindow *editor, cairo_surface_t *surface)
+{
+	if (editor->surface)
+	{
+		cairo_surface_destroy (editor->surface);
+	}
+	if (surface)
+	{
+		editor->surface = cairo_surface_reference (surface);
+	}
+	else
+	{
+		editor->surface = NULL;
+	}
 }
 
 /*******************************************************************************
@@ -566,24 +638,27 @@ paint_editor_window_show_save_dialog (PaintEditorWindow *editor)
 	}
 }
 
+void
+paint_editor_window_update_canvas (PaintEditorWindow *editor)
+{
+	int value;
+	value = muldiv (editor->content_width, editor->zoom, PAINT_ZOOM_DEFAULT_VALUE);
+	gtk_drawing_area_set_content_width (editor->canvas, value);
+	value = muldiv (editor->content_height, editor->zoom, PAINT_ZOOM_DEFAULT_VALUE);
+	gtk_drawing_area_set_content_height (editor->canvas, value);
+}
+
 /*******************************************************************************
  * @brief ウィンドウ タイトルを更新する。
  ******************************************************************************/
 void
 paint_editor_window_update_title (PaintEditorWindow *editor)
 {
-	char *name;
-	char title [PAINT_EDITOR_WINDOW_CCH_TITLE];
+	char title [PAINT_EDITOR_WINDOW_TITLE_CCH];
 
-	if (editor->file)
+	if (editor->name)
 	{
-		name = g_file_get_basename (editor->file);
-
-		if (name)
-		{
-			snprintf (title, PAINT_EDITOR_WINDOW_CCH_TITLE, PAINT_EDITOR_WINDOW_FORMAT_TITLE, name, TEXT_TITLE);
-			g_free (name);
-			gtk_window_set_title (GTK_WINDOW (editor), title);
-		}
+		snprintf (title, PAINT_EDITOR_WINDOW_TITLE_CCH, PAINT_EDITOR_WINDOW_TITLE_FORMAT, editor->name, TEXT_TITLE);
+		gtk_window_set_title (GTK_WINDOW (editor), title);
 	}
 }
