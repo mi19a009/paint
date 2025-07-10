@@ -22,15 +22,18 @@ struct _PaintEditorWindow
 	char                *name; /* タイトル バー上に表示される名前 */
 	cairo_surface_t     *surface; /* キャンバス上に描画される画像 */
 	GFile               *file; /* 開いたファイル */
-	GtkBox              *content;
-	GtkDrawingArea      *canvas;
-	GtkScrolledWindow   *client;
+	GtkWidget           *content;
+	GtkWidget           *canvas;
+	GtkWidget           *client;
+	gdouble              surface_x;
+	gdouble              surface_y;
 	gint                 content_width;
 	gint                 content_height;
 	gint                 zoom;
 	guint8               closing;
 	guint8               modified;
 	guint8               surface_loading;
+	guint8               canvas_pressed;
 };
 
 static void
@@ -41,6 +44,12 @@ static void
 paint_editor_window_activate_save (GSimpleAction *, GVariant *, gpointer);
 static void
 paint_editor_window_activate_save_as (GSimpleAction *, GVariant *, gpointer);
+static void
+paint_editor_window_canvas_move (GtkEventControllerMotion *, gdouble, gdouble, gpointer);
+static void
+paint_editor_window_canvas_press (GtkGestureClick *, gint, gdouble, gdouble, gpointer);
+static void
+paint_editor_window_canvas_release (GtkGestureClick *, gint, gdouble, gdouble, gpointer);
 static void
 paint_editor_window_class_init (PaintEditorWindowClass *);
 static gboolean
@@ -59,6 +68,10 @@ static void
 paint_editor_window_init_actions (GActionMap *);
 static void
 paint_editor_window_init_canvas (PaintEditorWindow *);
+static void
+paint_editor_window_init_canvas_click (PaintEditorWindow *);
+static void
+paint_editor_window_init_canvas_motion (PaintEditorWindow *);
 static void
 paint_editor_window_init_client (PaintEditorWindow *);
 static void
@@ -160,6 +173,60 @@ paint_editor_window_activate_save_as (GSimpleAction *, GVariant *, gpointer self
 	paint_editor_window_show_save_dialog (PAINT_EDITOR_WINDOW (self));
 }
 
+void
+paint_editor_window_canvas_move (GtkEventControllerMotion *, gdouble canvas_x, gdouble canvas_y, gpointer self)
+{
+	PaintEditorWindow *editor;
+	cairo_t *context;
+	editor = PAINT_EDITOR_WINDOW (self);
+
+	if (editor->surface && editor->canvas_pressed)
+	{
+		context = cairo_create (editor->surface);
+
+		if (context)
+		{
+			cairo_move_to (context, editor->surface_x, editor->surface_y);
+			cairo_line_to (context, canvas_x, canvas_y);
+			cairo_stroke (context);
+			cairo_destroy (context);
+		}
+
+		gtk_widget_queue_draw (editor->canvas);
+	}
+
+	editor->surface_x = canvas_x;
+	editor->surface_y = canvas_y;
+}
+
+void
+paint_editor_window_canvas_press (GtkGestureClick *click, gint, gdouble canvas_x, gdouble canvas_y, gpointer self)
+{
+	PaintEditorWindow *editor;
+	editor = PAINT_EDITOR_WINDOW (self);
+
+	if (gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (click)) == GDK_BUTTON_PRIMARY)
+	{
+		editor->canvas_pressed = TRUE;
+		editor->surface_x = canvas_x;
+		editor->surface_y = canvas_y;
+	}
+}
+
+void
+paint_editor_window_canvas_release (GtkGestureClick *click, gint, gdouble canvas_x, gdouble canvas_y, gpointer self)
+{
+	PaintEditorWindow *editor;
+	editor = PAINT_EDITOR_WINDOW (self);
+
+	if (gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (click)) == GDK_BUTTON_PRIMARY)
+	{
+		editor->canvas_pressed = FALSE;
+		editor->surface_x = canvas_x;
+		editor->surface_y = canvas_y;
+	}
+}
+
 /*******************************************************************************
  * @brief クラスのコールバック関数を登録する。
  ******************************************************************************/
@@ -250,6 +317,8 @@ paint_editor_window_init (PaintEditorWindow *editor)
 	paint_editor_window_init_content (editor);
 	paint_editor_window_init_client  (editor);
 	paint_editor_window_init_canvas  (editor);
+	paint_editor_window_init_canvas_click (editor);
+	paint_editor_window_init_canvas_motion (editor);
 }
 
 /*******************************************************************************
@@ -309,17 +378,49 @@ paint_editor_window_init_actions (GActionMap *actions)
 void
 paint_editor_window_init_canvas (PaintEditorWindow *editor)
 {
-	GtkWidget *widget;
-
 	if (editor->client)
 	{
-		widget = gtk_drawing_area_new ();
+		editor->canvas = gtk_drawing_area_new ();
 
-		if (widget)
+		if (editor->canvas)
 		{
-			editor->canvas = GTK_DRAWING_AREA (widget);
-			gtk_drawing_area_set_draw_func (editor->canvas, paint_editor_window_draw_canvas, editor, NULL);
-			gtk_scrolled_window_set_child (editor->client, widget);
+			gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (editor->canvas), paint_editor_window_draw_canvas, editor, NULL);
+			gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (editor->client), editor->canvas);
+		}
+	}
+}
+
+void
+paint_editor_window_init_canvas_click (PaintEditorWindow *editor)
+{
+	GtkGesture *gesture;
+
+	if (editor->canvas)
+	{
+		gesture = gtk_gesture_click_new ();
+
+		if (gesture)
+		{
+			g_signal_connect (gesture, "pressed", G_CALLBACK (paint_editor_window_canvas_press), editor);
+			g_signal_connect (gesture, "released", G_CALLBACK (paint_editor_window_canvas_release), editor);
+			gtk_widget_add_controller (editor->canvas, GTK_EVENT_CONTROLLER (gesture));
+		}
+	}
+}
+
+void
+paint_editor_window_init_canvas_motion (PaintEditorWindow *editor)
+{
+	GtkEventController *controller;
+
+	if (editor->canvas)
+	{
+		controller = gtk_event_controller_motion_new ();
+
+		if (controller)
+		{
+			g_signal_connect (controller, "motion", G_CALLBACK (paint_editor_window_canvas_move), editor);
+			gtk_widget_add_controller (editor->canvas, controller);
 		}
 	}
 }
@@ -330,17 +431,14 @@ paint_editor_window_init_canvas (PaintEditorWindow *editor)
 void
 paint_editor_window_init_client (PaintEditorWindow *editor)
 {
-	GtkWidget *widget;
-
 	if (editor->content)
 	{
-		widget = gtk_scrolled_window_new ();
+		editor->client = gtk_scrolled_window_new ();
 
-		if (widget)
+		if (editor->client)
 		{
-			editor->client = GTK_SCROLLED_WINDOW (widget);
-			gtk_widget_set_vexpand (widget, TRUE);
-			gtk_box_append (editor->content, widget);
+			gtk_widget_set_vexpand (editor->client, TRUE);
+			gtk_box_append (GTK_BOX (editor->content), editor->client);
 		}
 	}
 }
@@ -351,13 +449,11 @@ paint_editor_window_init_client (PaintEditorWindow *editor)
 void
 paint_editor_window_init_content (PaintEditorWindow *editor)
 {
-	GtkWidget *widget;
-	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+	editor->content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
-	if (widget)
+	if (editor->content)
 	{
-		editor->content = GTK_BOX (widget);
-		gtk_window_set_child (GTK_WINDOW (editor), widget);
+		gtk_window_set_child (GTK_WINDOW (editor), editor->content);
 	}
 }
 

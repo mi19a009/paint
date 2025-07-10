@@ -19,6 +19,9 @@ typedef struct _PaintLayer        PaintLayer;
 typedef struct _PaintMain         PaintMain;
 typedef struct _PaintMemento      PaintMemento;
 typedef struct _cairo_surface     PaintSurface;
+typedef struct _PaintTool         PaintTool;
+typedef struct _PaintToolClass    PaintToolClass;
+typedef struct _PaintToolPencil   PaintToolPencil;
 typedef struct _PaintViewerWindow PaintViewerWindow;
 typedef enum   _PaintVisibility   PaintVisibility;
 
@@ -43,6 +46,11 @@ struct _PaintMemento
 {
 	PaintSurface *surface;
 	PaintLayer *layer;
+};
+
+struct _PaintToolClass
+{
+	GObjectClass parent_class;
 };
 
 extern const char *
