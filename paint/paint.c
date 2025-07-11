@@ -24,9 +24,9 @@ G_DEFINE_ENUM_TYPE (PaintVisibility, paint_visibility,
 	G_DEFINE_ENUM_VALUE (PAINT_VISIBILITY_EDIT,    "Edit"),
 	G_DEFINE_ENUM_VALUE (PAINT_VISIBILITY_VISIBLE, "Visible"),
 	G_DEFINE_ENUM_VALUE (PAINT_VISIBILITY_HIDDEN,  "Hidden"));
-G_DEFINE_BOXED_TYPE (PaintSurface, paint_surface,
-	(GBoxedCopyFunc) cairo_surface_reference,
-	(GBoxedFreeFunc) cairo_surface_destroy);
+// G_DEFINE_BOXED_TYPE (PaintSurface, paint_surface,
+// 	(GBoxedCopyFunc) cairo_surface_reference,
+// 	(GBoxedFreeFunc) cairo_surface_destroy);
 
 const char *
 TEXT_AUTHORS [] = { "Taichi Murakami", NULL };
@@ -53,6 +53,27 @@ muldiv (int number, int numerator, int denominator)
 	}
 
 	return number;
+}
+
+/*******************************************************************************
+ * @brief 指定したエラーを説明するウィンドウを表示する。
+ ******************************************************************************/
+void
+paint_error_dialog_show (GtkWindow *parent, GError *error)
+{
+	GtkAlertDialog *dialog;
+
+	if (error)
+	{
+		dialog = gtk_alert_dialog_new ("%s", error->message);
+
+		if (dialog)
+		{
+			gtk_alert_dialog_set_modal (dialog, TRUE);
+			gtk_alert_dialog_show (dialog, parent);
+			g_object_unref (dialog);
+		}
+	}
 }
 
 /*******************************************************************************
@@ -244,7 +265,7 @@ paint_surface_init_channel_4 (guchar *destination, const guchar *source, int wid
  * @param file 画像ファイル。
  * @return 作成したサーフィスを返す。
  ******************************************************************************/
-PaintSurface *
+cairo_surface_t *
 paint_surface_new_from_file (GFile *file, cairo_t *context, GError **error)
 {
 	cairo_surface_t *surface, *image;
