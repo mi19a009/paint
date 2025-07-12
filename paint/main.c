@@ -224,7 +224,8 @@ GtkWidget *
 paint_main_show (GApplication *application)
 {
 	GtkWidget *window;
-	window = paint_editor_window_new (application);
+	//window = paint_editor_window_new (application);
+	window = paint_frame_new (application);
 
 	if (window)
 	{

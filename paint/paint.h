@@ -11,12 +11,14 @@
 #define CLAMP_PROPERTY(value, PROPERTY) CLAMP ((value), PROPERTY ## _MINIMUM, PROPERTY ## _MAXIMUM)
 #define PAINT_PARAM_SPEC_INT(PROPERTY)                 g_param_spec_int     (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, PROPERTY ## _MINIMUM, PROPERTY ## _MAXIMUM, PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_UINT(PROPERTY)                g_param_spec_uint    (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, PROPERTY ## _MINIMUM, PROPERTY ## _MAXIMUM, PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
+#define PAINT_PARAM_SPEC_DOUBLE(PROPERTY)              g_param_spec_double  (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, PROPERTY ## _MINIMUM, PROPERTY ## _MAXIMUM, PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_BOOLEAN(PROPERTY)             g_param_spec_boolean (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB,                                             PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_STRING(PROPERTY)              g_param_spec_string  (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB,                                             PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_ENUM(PROPERTY, enum_type)     g_param_spec_enum    (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, (enum_type),                                PROPERTY ## _DEFAULT_VALUE, PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_BOXED(PROPERTY, boxed_type)   g_param_spec_boxed   (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, (boxed_type),                                                           PROPERTY ## _FLAGS)
 #define PAINT_PARAM_SPEC_OBJECT(PROPERTY, object_type) g_param_spec_object  (PROPERTY ## _NAME, PROPERTY ## _NICK, PROPERTY ## _BLURB, (object_type),                                                          PROPERTY ## _FLAGS)
 
+typedef struct _PaintCanvas         PaintCanvas;
 typedef struct _PaintDocument       PaintDocument;
 typedef struct _PaintEditorWindow   PaintEditorWindow;
 typedef struct _PaintFrame          PaintFrame;
@@ -71,6 +73,42 @@ TEXT_WEBSITE;
 
 int
 muldiv (int number, int numerator, int denominator);
+void
+paint_about_dialog_show (GtkWindow *parent);
+void
+paint_canvas_draw (GtkDrawingArea *drawing_area, cairo_t *cr, gint width, gint height, gpointer user_data);
+gboolean
+paint_canvas_get_auto_size (PaintCanvas *canvas);
+gint
+paint_canvas_get_image_height (PaintCanvas *canvas);
+gint
+paint_canvas_get_image_width (PaintCanvas *canvas);
+gdouble
+paint_canvas_get_rotation (PaintCanvas *canvas);
+gdouble
+paint_canvas_get_scaling_x (PaintCanvas *canvas);
+gdouble
+paint_canvas_get_scaling_y (PaintCanvas *canvas);
+cairo_surface_t *
+paint_canvas_get_surface (PaintCanvas *canvas, guint index);
+gdouble
+paint_canvas_get_translation_x (PaintCanvas *canvas);
+gdouble
+paint_canvas_get_translation_y (PaintCanvas *canvas);
+GtkWidget *
+paint_canvas_new (gboolean auto_size);
+void
+paint_canvas_set_auto_size (PaintCanvas *canvas, gboolean auto_size);
+void
+paint_canvas_set_image (PaintCanvas *canvas, gint image_width, gint image_height);
+void
+paint_canvas_set_rotation (PaintCanvas *canvas, gdouble rotation);
+void
+paint_canvas_set_scaling (PaintCanvas *canvas, gdouble scaling_x, gdouble scaling_y);
+void
+paint_canvas_set_surface (PaintCanvas *canvas, guint index, cairo_surface_t *surface);
+void
+paint_canvas_set_translation (PaintCanvas *canvas, gdouble translation_x, gdouble translation_y);
 GFile *
 paint_document_get_file (PaintDocument *document);
 GtkAdjustment *
@@ -86,7 +124,7 @@ paint_document_get_vflip (PaintDocument *document);
 guint
 paint_document_get_zoom (PaintDocument *document);
 GtkWidget *
-paint_document_new (void);
+paint_document_new (GtkAdjustment *hadjustment, GtkAdjustment *vadjustment);
 void
 paint_document_reset (PaintDocument *document);
 void
@@ -94,9 +132,13 @@ paint_document_save (PaintDocument *document, const GFile *file);
 void
 paint_document_set_file (PaintDocument *document, GFile *file);
 void
+paint_document_set_hadjustment (PaintDocument *document, GtkAdjustment *hadjustment);
+void
 paint_document_set_hflip (PaintDocument *document, gboolean hflip);
 void
 paint_document_set_rotation (PaintDocument *document, gint rotation);
+void
+paint_document_set_vadjustment (PaintDocument *document, GtkAdjustment *vadjustment);
 void
 paint_document_set_vflip (PaintDocument *document, gboolean vflip);
 void
@@ -107,8 +149,14 @@ GtkWidget *
 paint_editor_window_new (GApplication *application);
 void
 paint_error_dialog_show (GtkWindow *parent, GError *error);
+void
+paint_file_dialog_open (GtkWindow *parent, GFile *file, GAsyncReadyCallback callback, gpointer user_data);
+void
+paint_file_dialog_save (GtkWindow *parent, GFile *file, GAsyncReadyCallback callback, gpointer user_data);
 GListModel *
 paint_file_filter_list_new (void);
+GtkWidget *
+paint_frame_new (GApplication *application);
 int
 paint_layer_get_height (PaintLayer *layer);
 unsigned
@@ -146,6 +194,7 @@ paint_scrolled_window_set_child (PaintScrolledWindow *scrolled, GtkWidget *child
 cairo_surface_t *
 paint_surface_new_from_file (GFile *file, cairo_t *context, GError **error);
 
+G_DECLARE_FINAL_TYPE (PaintCanvas,         paint_canvas,          PAINT, CANVAS,          GtkDrawingArea);
 G_DECLARE_FINAL_TYPE (PaintDocument,       paint_document,        PAINT, DOCUMENT,        GtkDrawingArea);
 G_DECLARE_FINAL_TYPE (PaintEditorWindow,   paint_editor_window,   PAINT, EDITOR_WINDOW,   GtkApplicationWindow);
 G_DECLARE_FINAL_TYPE (PaintFrame,          paint_frame,           PAINT, FRAME,           GtkApplicationWindow);
@@ -158,6 +207,7 @@ G_DECLARE_FINAL_TYPE (PaintToolbar,        paint_toolbar,         PAINT, TOOLBAR
 GType paint_surface_get_type    (void);
 GType paint_visibility_get_type (void);
 
+#define PAINT_TYPE_CANVAS          paint_canvas_get_type          ()
 #define PAINT_TYPE_DOCUMENT        paint_document_get_type        ()
 #define PAINT_TYPE_EDITOR_WINDOW   paint_editor_window_get_type   ()
 #define PAINT_TYPE_FRAME           paint_frame_get_type           ()

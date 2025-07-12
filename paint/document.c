@@ -9,7 +9,7 @@
 #define PAINT_DOCUMENT_PROPERTY_HADJUSTMENT_NICK          "Horizontal Adjustment"
 #define PAINT_DOCUMENT_PROPERTY_HADJUSTMENT_BLURB         "Horizontal Adjustment"
 #define PAINT_DOCUMENT_PROPERTY_HADJUSTMENT_DEFAULT_VALUE NULL
-#define PAINT_DOCUMENT_PROPERTY_HADJUSTMENT_FLAGS         G_PARAM_READABLE
+#define PAINT_DOCUMENT_PROPERTY_HADJUSTMENT_FLAGS         G_PARAM_READWRITE | G_PARAM_CONSTRUCT
 #define PAINT_DOCUMENT_PROPERTY_HFLIP_NAME                "hflip"
 #define PAINT_DOCUMENT_PROPERTY_HFLIP_NICK                "Horizontal Flip"
 #define PAINT_DOCUMENT_PROPERTY_HFLIP_BLURB               "Horizontal Flip"
@@ -26,7 +26,7 @@
 #define PAINT_DOCUMENT_PROPERTY_VADJUSTMENT_NICK          "Vertical Adjustment"
 #define PAINT_DOCUMENT_PROPERTY_VADJUSTMENT_BLURB         "Vertical Adjustment"
 #define PAINT_DOCUMENT_PROPERTY_VADJUSTMENT_DEFAULT_VALUE NULL
-#define PAINT_DOCUMENT_PROPERTY_VADJUSTMENT_FLAGS         G_PARAM_READABLE
+#define PAINT_DOCUMENT_PROPERTY_VADJUSTMENT_FLAGS         G_PARAM_READWRITE | G_PARAM_CONSTRUCT
 #define PAINT_DOCUMENT_PROPERTY_VFLIP_NAME                "vflip"
 #define PAINT_DOCUMENT_PROPERTY_VFLIP_NICK                "Vertical Flip"
 #define PAINT_DOCUMENT_PROPERTY_VFLIP_BLURB               "Vertical Flip"
@@ -41,6 +41,7 @@
 #define PAINT_DOCUMENT_PROPERTY_ZOOM_FLAGS                G_PARAM_READWRITE | G_PARAM_CONSTRUCT
 #define PAINT_DOCUMENT_STEP_INCREMENT                     10
 #define PAINT_DOCUMENT_PAGE_INCRENENT                     10
+#define PAINT_DOCUMENT_SIGNAL_ADJUSTMENT                  "value-changed"
 
 /* Document クラスのプロパティ */
 enum _PaintDocumentProperty
@@ -64,6 +65,8 @@ struct _PaintDocument
 	cairo_surface_t *surface;
 	gdouble          surface_x;
 	gdouble          surface_y;
+	gulong           hadjustment_handler;
+	gulong           vadjustment_handler;
 	gint             height;
 	gint             margin;
 	gint             width;
@@ -98,8 +101,6 @@ static void
 paint_document_get_property (GObject *, guint, GValue *, GParamSpec *);
 static void
 paint_document_init (PaintDocument *);
-static void
-paint_document_init_adjustment (PaintDocument *);
 static void
 paint_document_init_controller (PaintDocument *);
 static void
@@ -161,8 +162,8 @@ paint_document_class_init_object (GObjectClass *object)
 void
 paint_document_destroy (PaintDocument *document)
 {
-	g_clear_object  (&document->hadjustment);
-	g_clear_object  (&document->vadjustment);
+	paint_document_set_hadjustment (document, NULL);
+	paint_document_set_vadjustment (document, NULL);
 	g_clear_pointer (&document->surface, cairo_surface_destroy);
 }
 
@@ -247,8 +248,20 @@ paint_document_get_property (GObject *object, guint property_id, GValue *value, 
 {
 	switch (property_id)
 	{
+	case PAINT_DOCUMENT_PROPERTY_HADJUSTMENT:
+		g_value_set_object (value, PAINT_DOCUMENT (object)->hadjustment);
+		break;
+	case PAINT_DOCUMENT_PROPERTY_HFLIP:
+		g_value_set_boolean (value, PAINT_DOCUMENT (object)->hflip);
+		break;
 	case PAINT_DOCUMENT_PROPERTY_ROTATION:
 		g_value_set_int (value, PAINT_DOCUMENT (object)->rotation);
+		break;
+	case PAINT_DOCUMENT_PROPERTY_VADJUSTMENT:
+		g_value_set_object (value, PAINT_DOCUMENT (object)->vadjustment);
+		break;
+	case PAINT_DOCUMENT_PROPERTY_VFLIP:
+		g_value_set_boolean (value, PAINT_DOCUMENT (object)->vflip);
 		break;
 	case PAINT_DOCUMENT_PROPERTY_ZOOM:
 		g_value_set_uint (value, PAINT_DOCUMENT (object)->zoom);
@@ -286,29 +299,9 @@ paint_document_get_zoom (PaintDocument *document)
 void
 paint_document_init (PaintDocument *document)
 {
-	paint_document_init_adjustment (document);
 	paint_document_init_controller (document);
 	paint_document_init_gesture    (document);
 	gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (document), paint_document_draw_surface, document, NULL);
-}
-
-void
-paint_document_init_adjustment (PaintDocument *document)
-{
-	GtkAdjustment **adjustments [] = { &document->hadjustment, &document->vadjustment };
-	GtkAdjustment *adjustment;
-	guint index;
-
-	for (index = 0; index < G_N_ELEMENTS (adjustments); index++)
-	{
-		adjustment = gtk_adjustment_new (0, 0, 0, PAINT_DOCUMENT_STEP_INCREMENT, 0, 0);
-
-		if (adjustment)
-		{
-			g_signal_connect (adjustment, "changed", G_CALLBACK (paint_document_change_adjustment), document);
-			*(adjustments [index]) = adjustment;
-		}
-	}
 }
 
 void
@@ -406,9 +399,12 @@ paint_document_move_released (GtkGestureClick *click, gint, gdouble x, gdouble y
 }
 
 GtkWidget *
-paint_document_new (void)
+paint_document_new (GtkAdjustment *hadjustment, GtkAdjustment *vadjustment)
 {
-	return g_object_new (PAINT_TYPE_DOCUMENT, NULL);
+	return g_object_new (PAINT_TYPE_DOCUMENT,
+		"hadjustment", hadjustment,
+		"vadjustment", vadjustment,
+		NULL);
 }
 
 void
@@ -420,7 +416,6 @@ paint_document_reset (PaintDocument *document)
 void
 paint_document_resize (GtkDrawingArea *area, gint width, gint height)
 {
-	GTK_DRAWING_AREA_CLASS (paint_document_parent_class)->resize (area, width, height);
 	paint_document_set_page_size (PAINT_DOCUMENT (area), width, height);
 }
 
@@ -451,6 +446,29 @@ paint_document_set_file (PaintDocument *document, GFile *file)
 }
 
 void
+paint_document_set_hadjustment (PaintDocument *document, GtkAdjustment *hadjustment)
+{
+	if (document->hadjustment != hadjustment)
+	{
+		if (document->hadjustment)
+		{
+			g_signal_handler_disconnect (document->hadjustment, document->hadjustment_handler);
+			g_object_unref (document->hadjustment);
+		}
+		if (hadjustment)
+		{
+			document->hadjustment = g_object_ref (hadjustment);
+			document->hadjustment_handler = g_signal_connect (hadjustment, PAINT_DOCUMENT_SIGNAL_ADJUSTMENT, G_CALLBACK (paint_document_change_adjustment), document);
+		}
+		else
+		{
+			document->hadjustment = NULL;
+			document->hadjustment_handler = 0;
+		}
+	}
+}
+
+void
 paint_document_set_hflip (PaintDocument *document, gboolean hflip)
 {
 	document->hflip = hflip != 0;
@@ -474,8 +492,20 @@ paint_document_set_property (GObject *object, guint property_id, const GValue *v
 {
 	switch (property_id)
 	{
+	case PAINT_DOCUMENT_PROPERTY_HADJUSTMENT:
+		paint_document_set_hadjustment (PAINT_DOCUMENT (object), g_value_get_object (value));
+		break;
+	case PAINT_DOCUMENT_PROPERTY_HFLIP:
+		paint_document_set_hflip (PAINT_DOCUMENT (object), g_value_get_boolean (value));
+		break;
 	case PAINT_DOCUMENT_PROPERTY_ROTATION:
 		paint_document_set_rotation (PAINT_DOCUMENT (object), g_value_get_int (value));
+		break;
+	case PAINT_DOCUMENT_PROPERTY_VADJUSTMENT:
+		paint_document_set_vadjustment (PAINT_DOCUMENT (object), g_value_get_object (value));
+		break;
+	case PAINT_DOCUMENT_PROPERTY_VFLIP:
+		paint_document_set_vflip (PAINT_DOCUMENT (object), g_value_get_boolean (value));
 		break;
 	case PAINT_DOCUMENT_PROPERTY_ZOOM:
 		paint_document_set_zoom (PAINT_DOCUMENT (object), g_value_get_uint (value));
@@ -490,6 +520,29 @@ void
 paint_document_set_rotation (PaintDocument *document, gint canvas_rotation)
 {
 	document->rotation = CLAMP_PROPERTY (canvas_rotation, PAINT_DOCUMENT_PROPERTY_ROTATION);
+}
+
+void
+paint_document_set_vadjustment (PaintDocument *document, GtkAdjustment *vadjustment)
+{
+	if (document->vadjustment != vadjustment)
+	{
+		if (document->vadjustment)
+		{
+			g_signal_handler_disconnect (document->vadjustment, document->vadjustment_handler);
+			g_object_unref (document->vadjustment);
+		}
+		if (vadjustment)
+		{
+			document->vadjustment = g_object_ref (vadjustment);
+			document->vadjustment_handler = g_signal_connect (vadjustment, PAINT_DOCUMENT_SIGNAL_ADJUSTMENT, G_CALLBACK (paint_document_change_adjustment), document);
+		}
+		else
+		{
+			document->vadjustment = NULL;
+			document->vadjustment_handler = 0;
+		}
+	}
 }
 
 void

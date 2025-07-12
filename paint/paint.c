@@ -9,6 +9,12 @@
 typedef GtkFileFilter *(*PaintFileFilterNew) (void);
 typedef void (*PaintSurfaceInitChannel) (guchar *, const guchar *, int, int, int);
 
+static void
+paint_about_dialog_init (GtkAboutDialog *);
+static void
+paint_about_dialog_present (GtkWindow *, GtkWindow *);
+static void
+paint_file_dialog_init (GtkFileDialog *, GFile *);
 static GtkFileFilter *
 paint_file_filter_new_all (void);
 static GtkFileFilter *
@@ -56,6 +62,59 @@ muldiv (int number, int numerator, int denominator)
 }
 
 /*******************************************************************************
+ * @brief バージョン情報ダイアログ ボックスを初期化する。
+ ******************************************************************************/
+void
+paint_about_dialog_init (GtkAboutDialog *dialog)
+{
+	GdkTexture *logo;
+	char path [PAINT_RESOURCE_PATH_CCH];
+	gtk_about_dialog_set_authors        (dialog, TEXT_AUTHORS);
+	gtk_about_dialog_set_copyright      (dialog, TEXT_COPYRIGHT);
+	gtk_about_dialog_set_license_type   (dialog, GTK_LICENSE_APACHE_2_0);
+	gtk_about_dialog_set_program_name   (dialog, TEXT_TITLE);
+	gtk_about_dialog_set_version        (dialog, TEXT_VERSION);
+	gtk_about_dialog_set_website        (dialog, TEXT_WEBSITE);
+	paint_resource_format_path (path, PAINT_RESOURCE_PATH_CCH, "pencil.png");
+	logo = gdk_texture_new_from_resource (path);
+
+	if (logo)
+	{
+		gtk_about_dialog_set_logo (dialog, GDK_PAINTABLE (logo));
+		g_object_unref (logo);
+	}
+}
+
+/*******************************************************************************
+ * @brief モーダル ウィンドウを表示する。
+ ******************************************************************************/
+void
+paint_about_dialog_present (GtkWindow *dialog, GtkWindow *parent)
+{
+	gtk_window_set_destroy_with_parent (dialog, TRUE);
+	gtk_window_set_modal               (dialog, TRUE);
+	gtk_window_set_transient_for       (dialog, parent);
+	gtk_window_present                 (dialog);
+}
+
+/*******************************************************************************
+ * @brief 現在のバージョンを説明するウィンドウを表示する。
+ ******************************************************************************/
+void
+paint_about_dialog_show (GtkWindow *parent)
+{
+	GtkAboutDialog *dialog;
+	dialog = gtk_about_dialog_new ();
+
+	if (dialog)
+	{
+		g_signal_connect_swapped   (dialog, "destroy", G_CALLBACK (gtk_window_destroy), dialog);
+		paint_about_dialog_init    (dialog);
+		paint_about_dialog_present (dialog, parent);
+	}
+}
+
+/*******************************************************************************
  * @brief 指定したエラーを説明するウィンドウを表示する。
  ******************************************************************************/
 void
@@ -73,6 +132,72 @@ paint_error_dialog_show (GtkWindow *parent, GError *error)
 			gtk_alert_dialog_show (dialog, parent);
 			g_object_unref (dialog);
 		}
+	}
+}
+
+/*******************************************************************************
+ * @brief 各ファイル ダイアログ ボックスに共通する初期化を実行する。
+ * @param dialog 現在のダイアログ ボックス。
+ * @param file 最初のファイルまたは NULL。
+ ******************************************************************************/
+void
+paint_file_dialog_init (GtkFileDialog *dialog, GFile *file)
+{
+	GListModel *filters;
+	filters = paint_file_filter_list_new ();
+
+	if (filters)
+	{
+		gtk_file_dialog_set_filters (dialog, filters);
+		g_object_unref (filters);
+	}
+	if (file)
+	{
+		gtk_file_dialog_set_initial_file (dialog, file);
+	}
+}
+
+/*******************************************************************************
+ * @brief ファイルを開くダイアログ ボックスを表示する。
+ * @param parent 親ウィンドウ。
+ * @param file 最初のファイルまたは NULL。
+ * @param callback 完了時のコールバック関数。
+ * @param user_data コールバック関数へのデータ。
+ ******************************************************************************/
+void
+paint_file_dialog_open (GtkWindow *parent, GFile *file, GAsyncReadyCallback callback, gpointer user_data)
+{
+	GtkFileDialog *dialog;
+	dialog = gtk_file_dialog_new ();
+
+	if (dialog)
+	{
+		paint_file_dialog_init (dialog, file);
+		gtk_file_dialog_set_title (dialog, "Open File");
+		gtk_file_dialog_open (dialog, parent, NULL, callback, user_data);
+		g_object_unref (dialog);
+	}
+}
+
+/*******************************************************************************
+ * @brief ファイルを保存するダイアログ ボックスを表示する。
+ * @param parent 親ウィンドウ。
+ * @param file 最初のファイルまたは NULL。
+ * @param callback 完了時のコールバック関数。
+ * @param user_data コールバック関数へのデータ。
+ ******************************************************************************/
+void
+paint_file_dialog_save (GtkWindow *parent, GFile *file, GAsyncReadyCallback callback, gpointer user_data)
+{
+	GtkFileDialog *dialog;
+	dialog = gtk_file_dialog_new ();
+
+	if (dialog)
+	{
+		paint_file_dialog_init (dialog, file);
+		gtk_file_dialog_set_title (dialog, "Save File");
+		gtk_file_dialog_save (dialog, parent, NULL, callback, user_data);
+		g_object_unref (dialog);
 	}
 }
 
