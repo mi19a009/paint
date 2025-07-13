@@ -45,76 +45,99 @@ Frame Window
 +-------------------------+
 ```
 
-### Paint プロジェクトのオブジェクト
-#### Paint About Dialog オブジェクト
+### Paint About Dialog オブジェクト
 アプリケーションのバージョンを説明する。
+
 GTK About Dialog クラスのインスタンスを作成する。
 
-#### Paint Canvas オブジェクト
+### Paint Canvas オブジェクト
 指定した画像を描画する。
+
 最初に、ドキュメント ウィンドウと縮小表示ウィンドウにキャンバスを作成する。
 次に、各キャンバスに同じインスタンスの画像を与える。
 結果として、各ウィンドウ上にユーザーが開いた画像を表示できる。
+
 GTK Drawing Area クラスを継承する。
 
-#### Paint Client Window オブジェクト
+### Paint Client Window オブジェクト
 MDI クライアントを表す。
 
-#### Paint Document Window オブジェクト
+### Paint Document Window オブジェクト
 ユーザーがドキュメントを編集する方法を提供する。
+
 ユーザーが開いた画像を所有する。
 ユーザーがドキュメントをスクロールするためにスクロール バーを実装する。
 ユーザーが画像上に描画するために GTK イベント コントローラーを実装する。
+
 GTK Grid クラスを継承する。
 
-#### Paint Error Dialog オブジェクト
+### Paint Error Dialog オブジェクト
 指定したエラーを説明する。
+
 GTK Alert Dialog クラスのインスタンスを作成する。
 
-#### Paint File Dialog オブジェクト
+### Paint File Dialog オブジェクト
 ファイルを選択するダイアログ ボックスを表示する。
+
 GTK File Dialog クラスのインスタンスを作成する。
 
-#### Paint File Filter オブジェクト
+### Paint File Filter オブジェクト
 ファイルを選択するダイアログ ボックスのフィルターを表す。
+
 GTK File Filter クラスのインスタンスを作成する。
 
-#### Paint Frame Window オブジェクト
+### Paint Frame Window オブジェクト
 ドキュメント ウィンドウ、ツールバー、およびステータス バーを所有する。
+
 GTK Application Window クラスを継承する。
 
-#### Paint Layer オブジェクト
+### Paint Layer オブジェクト
 ユーザーがレイヤーを選択する方法を提供する。
 このオブジェクトはツール ウィンドウ上に配置される。
+
 GTK Grid クラスを継承する。
 
-#### Paint Main オブジェクト
+### Paint Main オブジェクト
 GTK アプリケーションを開始する。
+
 GTK Application クラスを継承する。
 
-#### Paint Tool Window オブジェクト
-モードレス ウィンドウを表す。
+### Paint Preview Window オブジェクト
+ユーザーが開いた画像を縮小表示する。
+キャンバスを作成した上で所有することを責務とする。
+
 GTK Window クラスを継承する。
 
-#### Paint Resource オブジェクト
+### Paint Resource オブジェクト
 リソースに関するヘルパー。
 
-#### Paint Surface オブジェクト
+### Paint Surface オブジェクト
 Cairo Surface オブジェクトを表す。
 
-#### Paint Statusbar オブジェクト
+### Paint Statusbar オブジェクト
 ステータス バーを表す。
+
 GTK Box クラスを継承する。
 
-#### Paint Tabbar オブジェクト
+### Paint Tabbar オブジェクト
 MDI クライアントを利用する際はタブ バー上にドキュメント ウィンドウへのボタンを列挙する。
 
-#### Paint Toolbar オブジェクト
+### Paint Tool Window オブジェクト
+モードレス ウィンドウを表す。
+
+GTK Window クラスを継承する。
+
+### Paint Toolbar オブジェクト
 ツールバーを表す。
+
+ツールバー上にボタンを列挙する。
+ボタンが押された場合はアクションが発火する。
+
 GTK Box クラスを継承する。
 
-#### Paint Viewport オブジェクト
+### Paint Viewport オブジェクト
 ユーザーがドキュメント ウィンドウをスクロールする方法を提供する。
+
 GTK Viewport クラスのインスタンスを作成する。
 
 ## Text プロジェクト

@@ -367,7 +367,11 @@ paint_canvas_init (PaintCanvas *canvas)
 GtkWidget *
 paint_canvas_new (gboolean auto_size)
 {
-	return g_object_new (PAINT_TYPE_CANVAS, "auto-size", auto_size, NULL);
+	return g_object_new (PAINT_TYPE_CANVAS,
+		"auto-size", auto_size,
+		"hexpand",   TRUE,
+		"vexpand",   TRUE,
+		NULL);
 }
 
 /*******************************************************************************

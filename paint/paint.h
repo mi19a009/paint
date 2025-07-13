@@ -25,6 +25,7 @@ typedef struct _PaintFrame          PaintFrame;
 typedef struct _PaintLayer          PaintLayer;
 typedef struct _PaintMain           PaintMain;
 typedef struct _PaintMemento        PaintMemento;
+typedef struct _PaintPreviewWindow  PaintPreviewWindow;
 typedef struct _PaintScrolledWindow PaintScrolledWindow;
 typedef struct _PaintStatusbar      PaintStatusbar;
 typedef struct _PaintTool           PaintTool;
@@ -183,6 +184,10 @@ GApplication *
 paint_main_new (void);
 GMenuModel *
 paint_menu_new (void);
+GtkWidget *
+paint_preview_window_get_canvas (PaintPreviewWindow *preview);
+GtkWidget *
+paint_preview_window_new (GtkWindow *parent);
 int
 paint_resource_format_path (char *resource_path, size_t resource_path_cch, const char *resource_name);
 GtkWidget *
@@ -193,6 +198,12 @@ void
 paint_scrolled_window_set_child (PaintScrolledWindow *scrolled, GtkWidget *child);
 cairo_surface_t *
 paint_surface_new_from_file (GFile *file, cairo_t *context, GError **error);
+GActionGroup *
+paint_toolbar_get_actions (PaintToolbar *toolbar);
+GtkWidget *
+paint_toolbar_new (GActionGroup *actions);
+void
+paint_toolbar_set_actions (PaintToolbar *toolbar, GActionGroup *actions);
 
 G_DECLARE_FINAL_TYPE (PaintCanvas,         paint_canvas,          PAINT, CANVAS,          GtkDrawingArea);
 G_DECLARE_FINAL_TYPE (PaintDocument,       paint_document,        PAINT, DOCUMENT,        GtkDrawingArea);
@@ -200,6 +211,7 @@ G_DECLARE_FINAL_TYPE (PaintEditorWindow,   paint_editor_window,   PAINT, EDITOR_
 G_DECLARE_FINAL_TYPE (PaintFrame,          paint_frame,           PAINT, FRAME,           GtkApplicationWindow);
 G_DECLARE_FINAL_TYPE (PaintLayer,          paint_layer,           PAINT, LAYER,           GObject);
 G_DECLARE_FINAL_TYPE (PaintMain,           paint_main,            PAINT, MAIN,            GtkApplication);
+G_DECLARE_FINAL_TYPE (PaintPreviewWindow,  paint_preview_window,  PAINT, PREVIEW_WINDOW,  GtkWindow);
 G_DECLARE_FINAL_TYPE (PaintScrolledWindow, paint_scrolled_window, PAINT, SCROLLED_WINDOW, GtkGrid);
 G_DECLARE_FINAL_TYPE (PaintStatusbar,      paint_statusbar,       PAINT, STATUSBAR,       GtkBox);
 G_DECLARE_FINAL_TYPE (PaintToolbar,        paint_toolbar,         PAINT, TOOLBAR,         GtkBox);
@@ -213,6 +225,9 @@ GType paint_visibility_get_type (void);
 #define PAINT_TYPE_FRAME           paint_frame_get_type           ()
 #define PAINT_TYPE_LAYER           paint_layer_get_type           ()
 #define PAINT_TYPE_MAIN            paint_main_get_type            ()
+#define PAINT_TYPE_PREVIEW_WINDOW  paint_preview_window_get_type  ()
 #define PAINT_TYPE_SCROLLED_WINDOW paint_scrolled_window_get_type ()
+#define PAINT_TYPE_STATUSBAR       paint_statusbar_get_type       ()
 #define PAINT_TYPE_SURFACE         paint_surface_get_type         ()
+#define PAINT_TYPE_TOOLBAR         paint_toolbar_get_type         ()
 #define PAINT_TYPE_VISIBILITY      paint_visibility_get_type      ()

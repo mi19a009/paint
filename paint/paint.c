@@ -103,14 +103,14 @@ paint_about_dialog_present (GtkWindow *dialog, GtkWindow *parent)
 void
 paint_about_dialog_show (GtkWindow *parent)
 {
-	GtkAboutDialog *dialog;
+	GtkWidget *dialog;
 	dialog = gtk_about_dialog_new ();
 
 	if (dialog)
 	{
 		g_signal_connect_swapped   (dialog, "destroy", G_CALLBACK (gtk_window_destroy), dialog);
-		paint_about_dialog_init    (dialog);
-		paint_about_dialog_present (dialog, parent);
+		paint_about_dialog_init    (GTK_ABOUT_DIALOG (dialog));
+		paint_about_dialog_present (GTK_WINDOW (dialog), parent);
 	}
 }
 
