@@ -1,0 +1,6 @@
+# Git Ignore
+build
+debug
+html
+resource.c
+release

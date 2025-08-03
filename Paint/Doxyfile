@@ -1,0 +1,30 @@
+# Doxyfile
+# https://doxygen.nl/manual/config.html
+# https://doxygen.dokyumento.jp/manual/config.html
+DOXYFILE_ENCODING      = UTF-8
+EXCLUDE                = build debug gtk html icons release
+EXTRACT_ALL            = NO
+EXTRACT_ANON_NSPACES   = NO
+EXTRACT_LOCAL_CLASSES  = NO
+EXTRACT_LOCAL_METHODS  = NO
+EXTRACT_PACKAGE        = NO
+EXTRACT_PRIV_VIRTUAL   = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = NO
+INCLUDE_PATH           = .
+INPUT                  =
+INPUT_ENCODING         = UTF-8
+INPUT_FILE_ENCODING    =
+JAVADOC_AUTOBRIEF      = YES
+JAVADOC_BANNER         = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+OUTPUT_DIRECTORY       =
+OUTPUT_LANGUAGE        = Japanese
+PROJECT_LOGO           =
+PROJECT_NAME           = "Paint"
+PROJECT_NUMBER         =
+RECURSIVE              = YES
+SOURCE_BROWSER         = NO
