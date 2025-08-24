@@ -1,4 +1,6 @@
 # Make
-.PHONY: all
+.PHONY: all run
 all:
-	cd gtk4 && $(MAKE)
+	@cd gtk4 && $(MAKE)
+run:
+	@./gtk4/obj/paint
