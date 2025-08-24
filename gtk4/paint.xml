@@ -2,5 +2,6 @@
 <gresources>
 	<gresource prefix="/com/github/mi19a009/paint/">
 		<file preprocess="xml-stripblanks">gtk/document.ui</file>
+		<file preprocess="xml-stripblanks">gtk/menus.ui</file>
 	</gresource>
 </gresources>
