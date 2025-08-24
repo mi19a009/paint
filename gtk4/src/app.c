@@ -97,6 +97,12 @@ Open:
 */ static void
 paint_application_open (GApplication *application, GFile **files, gint n_files, const gchar *hint)
 {
+	gint index;
+
+	for (index = 0; index < n_files; index++)
+	{
+		paint_application_show_document (PAINT_APPLICATION (application));
+	}
 }
 
 /*******************************************************************************
