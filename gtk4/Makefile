@@ -21,7 +21,13 @@ clean:
 	@$(RM) debug obj release
 target:
 	@if test ! -e $(OBJ); then mkdir $(OBJ); fi
-$(OBJ)/paint: $(PAINT)
-	@$(CC) $(CFLAGS) -o $@ $(PAINT) $(LIBS)
+$(OBJ)/paint: $(GTK) $(PAINT)
+	@$(CC) $(CFLAGS) -o $@ $(GTK) $(PAINT) $(LIBS)
+$(GTK): $(OBJ)/%.o: $(SRC)/%.c
+	@$(CC) $(CFLAGS) -c -o $@ $<
 $(PAINT): $(OBJ)/%.o: $(SRC)/%.c paint.h
 	@$(CC) $(CFLAGS) -c -o $@ $<
+$(SRC)/resource.c: paint.xml $(wildcard gtk/*)
+	@glib-compile-resources $< --target $@ --generate-source
+resource.h: paint.xml
+	@glib-compile-resources $< --target $@ --generate-header

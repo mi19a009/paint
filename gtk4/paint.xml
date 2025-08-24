@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gresources>
+	<gresource prefix="/com/github/mi19a009/paint/">
+		<file preprocess="xml-stripblanks">gtk/document.ui</file>
+	</gresource>
+</gresources>
