@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<interface>
-	<template class="PaintApplicationWindow" parent="GtkApplicationWindow">
-		<property name="default-height">480</property>
-		<property name="default-width">640</property>
-		<property name="icon-name">pencil</property>
-		<property name="title" translatable="yes">Paint</property>
-	</template>
-</interface>
