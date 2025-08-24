@@ -1,6 +1,7 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #include <gtk/gtk.h>
 #include "paint.h"
+#define TEMPLATE_NAME "gtk/document.ui"
 
 /* Paint Document Window クラスのインスタンス */
 struct _PaintDocumentWindow
@@ -21,7 +22,6 @@ Paint Document Window クラス:
 */ G_DEFINE_FINAL_TYPE (PaintDocumentWindow, paint_document_window, GTK_TYPE_APPLICATION_WINDOW);
 #define PAINT_DOCUMENT_WINDOW_PROPERTY_APPLICATION_NAME "application"
 #define PAINT_DOCUMENT_WINDOW_PROPERTY_SHOW_MENUBAR_NAME "show-menubar"
-#define PAINT_DOCUMENT_WINDOW_TEMPLATE_NAME "/com/github/mi19a009/paint/gtk/document.ui"
 
 /*******************************************************************************
 Class Init:
@@ -48,7 +48,9 @@ Widget クラスを初期化します。
 */ static void
 paint_document_window_class_init_widget (GtkWidgetClass *widget)
 {
-	gtk_widget_class_set_template_from_resource (widget, PAINT_DOCUMENT_WINDOW_TEMPLATE_NAME);
+	char path [PAINT_RESOURCE_PATH_CCH];
+	paint_get_resource_path (path, PAINT_RESOURCE_PATH_CCH, TEMPLATE_NAME);
+	gtk_widget_class_set_template_from_resource (widget, path);
 }
 
 /*******************************************************************************

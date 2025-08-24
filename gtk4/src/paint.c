@@ -2,6 +2,7 @@
 #include <gtk/gtk.h>
 #include "paint.h"
 #define PAINT_APPLICATION_ID "com.github.mi19a009.paint"
+#define PAINT_RESOURCE_PATH_FORMAT "/com/github/mi19a009/paint/%s"
 
 /*******************************************************************************
 Main 関数:
@@ -26,4 +27,14 @@ main (int argc, char *argv [])
 	}
 
 	return result;
+}
+
+/*******************************************************************************
+Get Resource Path:
+リソースへのパスを取得します。
+プレフィックスの末尾に指定した文字列を連結します。
+*/ int
+paint_get_resource_path (char *buffer, size_t maxlen, const char *name)
+{
+	return snprintf (buffer, maxlen, PAINT_RESOURCE_PATH_FORMAT, name);
 }

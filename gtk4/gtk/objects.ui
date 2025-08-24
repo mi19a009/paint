@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<interface>
+	<object class="GtkAboutDialog" id="about_dialog">
+		<property name="authors">Taichi Murakami</property>
+		<property name="copyright">Copyright © 2025 Taichi Murakami.</property>
+		<property name="license-type">GTK_LICENSE_APACHE_2_0</property>
+		<property name="logo-icon-name">pencil</property>
+		<property name="program-name" translatable="yes">Paint</property>
+		<property name="version">Version 0.0</property>
+		<property name="website">https://mi19a009.github.io/paint/</property>
+	</object>
+</interface>

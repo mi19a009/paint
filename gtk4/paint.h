@@ -1,8 +1,10 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #include <gtk/gtk.h>
+#define PAINT_RESOURCE_PATH_CCH 64
 
 /* Paint モジュール */
-GResource *paint_get_resource (void);
+GResource *paint_get_resource      (void);
+int        paint_get_resource_path (char *buffer, size_t maxlen, const char *name);
 
 /* Paint Application クラス */
 GApplication *paint_application_new (const char *application_id);
