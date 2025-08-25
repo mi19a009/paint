@@ -27,7 +27,9 @@ $(GTK): $(OBJ)/%.o: $(SRC)/%.c
 	@echo "$@ <- $<" && $(CC) $(CFLAGS) -c -o $@ $<
 $(PAINT): $(OBJ)/%.o: $(SRC)/%.c paint.h
 	@echo "$@ <- $<" && $(CC) $(CFLAGS) -c -o $@ $<
-$(SRC)/resource.c: paint.xml $(wildcard gtk/*) $(wildcard icons/16x16/actions/*)
+$(SRC)/resource.c: paint.xml $(wildcard gtk/*.*) $(wildcard icons/16x16/actions/*.*)
 	@echo "$@" && glib-compile-resources $< --target $@ --generate-source
 resource.h: paint.xml
 	@echo "$@" && glib-compile-resources $< --target $@ --generate-header
+$(OBJ)/gschemas.compiled: $(wildcard settings/*.*)
+	@echo "$@" && glib-compile-schemas --targetdir=$(OBJ) settings

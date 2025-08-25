@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+	<schema id="com.github.mi19a009.paint" path="/com/github/mi19a009/paint/">
+		<key name="fullscreen" type="b">
+			<default>false</default>
+		</key>
+		<key name="maximized" type="b">
+			<default>false</default>
+		</key>
+		<key name="window-size" type="(ii)">
+			<default>(640,480)</default>
+		</key>
+	</schema>
+</schemalist>
