@@ -7,7 +7,6 @@ GTK = \
 	$(OBJ)/main.o \
 	$(OBJ)/resource.o
 PAINT = \
-	$(OBJ)/document.o \
 	$(OBJ)/paint.o \
 	$(OBJ)/paint-application.o \
 	$(OBJ)/paint-window.o
@@ -20,7 +19,7 @@ release: OBJ = release
 release: CFLAGS += -O2 -DNDEBUG
 release: all
 clean:
-	@$(RM) debug obj release
+	@$(RM) debug obj release resource.c resource.h
 target:
 	@echo "$(OBJ)" && if test ! -e $(OBJ); then mkdir $(OBJ); fi
 $(OBJ)/paint: $(GTK) $(PAINT)
