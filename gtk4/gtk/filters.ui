@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<interface>
+	<requires lib="gtk" version="4.0"/>
+	<object class="GListStore" id="file_filters">
+		<child>
+			<object class="GtkFileFilter">
+				<property name="name">Image Files</property>
+				<mime-types>
+					<mime-type>image/*</mime-type>
+				</mime-types>
+			</object>
+		</child>
+		<child>
+			<object class="GtkFileFilter">
+				<property name="name">All Files</property>
+				<patterns>
+					<pattern>*</pattern>
+				</patterns>
+			</object>
+		</child>
+	</object>
+</interface>

@@ -21,4 +21,4 @@ release
 x64
 x86
 gtk4/resource.h
-gtk4/src/resource.c
+gtk4/resource.c

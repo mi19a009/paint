@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<interface>
+	<requires lib="gtk" version="4.0"/>
+	<template class="PaintWindow" parent="GtkApplicationWindow">
+		<property name="default-height">480</property>
+		<property name="default-width">640</property>
+		<property name="title">Paint</property>
+		<property name="titlebar">
+			<object class="GtkHeaderBar">
+				<property name="title-widget">
+					<object class="GtkBox">
+						<property name="orientation">vertical</property>
+						<property name="valign">center</property>
+						<property name="vexpand">true</property>
+						<child>
+							<object class="GtkLabel" id="title_label">
+								<property name="label">Title</property>
+								<property name="single-line-mode">true</property>
+								<property name="ellipsize">end</property>
+								<style>
+									<class name="title" />
+								</style>
+							</object>
+						</child>
+						<child>
+							<object class="GtkLabel" id="subtitle_label">
+								<property name="label">Subtitle</property>
+								<property name="single-line-mode">true</property>
+								<property name="ellipsize">end</property>
+								<property name="visible">false</property>
+								<style>
+									<class name="subtitle" />
+								</style>
+							</object>
+						</child>
+					</object>
+				</property>
+				<child type="start">
+					<object class="GtkBox">
+						<property name="orientation">horizontal</property>
+						<style>
+							<class name="linked" />
+						</style>
+						<child>
+							<object class="GtkMenuButton">
+								<property name="tooltip-text">Tools</property>
+								<property name="menu-model">tool_menu</property>
+								<child>
+									<object class="GtkBox">
+										<property name="orientation">horizontal</property>
+										<property name="spacing">5</property>
+										<style>
+											<class name="linked" />
+										</style>
+										<child>
+											<object class="GtkImage" id="tool_image">
+												<property name="icon-name">document-edit-symbolic</property>
+											</object>
+										</child>
+										<child>
+											<object class="GtkLabel" id="tool_label">
+												<property name="label">Tool</property>
+												<property name="single-line-mode">true</property>
+												<property name="ellipsize">end</property>
+											</object>
+										</child>
+									</object>
+								</child>
+							</object>
+						</child>
+						<child>
+							<object class="GtkColorButton">
+								<property name="tooltip-text">Tool Color</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkMenuButton">
+								<property name="tooltip-text">Tool Width</property>
+								<property name="menu-model">width_menu</property>
+								<child>
+									<object class="GtkLabel" id="tool_width_label">
+										<property name="label">Width</property>
+										<property name="single-line-mode">true</property>
+										<property name="ellipsize">end</property>
+									</object>
+								</child>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child type="end">
+					<object class="GtkMenuButton">
+						<property name="primary">true</property>
+						<property name="icon-name">open-menu-symbolic</property>
+						<property name="tooltip-text">Main Menu</property>
+						<property name="menu-model">primary_menu</property>
+					</object>
+				</child>
+			</object>
+		</property>
+		<child>
+			<object class="GtkBox">
+				<property name="orientation">vertical</property>
+				<property name="hexpand">true</property>
+				<property name="vexpand">true</property>
+				<child>
+					<object class="GtkGrid">
+						<child>
+							<object class="GtkDrawingArea" id="canvas">
+								<property name="hexpand">true</property>
+								<property name="vexpand">true</property>
+								<layout>
+									<property name="column">0</property>
+									<property name="row">0</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkScrollbar" id="vscrollbar">
+								<property name="orientation">vertical</property>
+								<property name="vexpand">true</property>
+								<property name="adjustment">
+									<object class="GtkAdjustment" id="vadjustment"></object>
+								</property>
+								<layout>
+									<property name="column">1</property>
+									<property name="row">0</property>
+								</layout>
+							</object>
+						</child>
+						<child>
+							<object class="GtkScrollbar" id="hscrollbar">
+								<property name="orientation">horizontal</property>
+								<property name="hexpand">true</property>
+								<property name="adjustment">
+									<object class="GtkAdjustment" id="hadjustment"></object>
+								</property>
+								<layout>
+									<property name="column">0</property>
+									<property name="row">1</property>
+								</layout>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkBox">
+						<property name="orientation">horizontal</property>
+						<property name="hexpand">true</property>
+						<property name="spacing">5</property>
+						<property name="margin-start">5</property>
+						<property name="margin-end">5</property>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">Size: (Width, Height)</property>
+								<property name="single-line-mode">true</property>
+								<property name="ellipsize">end</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSeparator">
+								<property name="orientation">vertical</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkLabel">
+								<property name="label">Pos: (X, Y)</property>
+								<property name="single-line-mode">true</property>
+								<property name="ellipsize">end</property>
+							</object>
+						</child>
+						<child>
+							<object class="GtkSeparator">
+								<property name="orientation">vertical</property>
+							</object>
+						</child>
+					</object>
+				</child>
+			</object>
+		</child>
+	</template>
+	<menu id="primary_menu">
+		<section>
+			<item>
+				<attribute name="label">_New</attribute>
+				<attribute name="action">app.new</attribute>
+			</item>
+			<item>
+				<attribute name="label">_Open</attribute>
+				<attribute name="action">app.open</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="label">_Menu Bar</attribute>
+				<attribute name="action">app.show-menubar</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="label">_Preferences</attribute>
+				<attribute name="action">app.preferences</attribute>
+			</item>
+			<item>
+				<attribute name="label">_Keyboard Shortcuts</attribute>
+				<attribute name="action">win.show-help-overlay</attribute>
+			</item>
+			<item>
+				<attribute name="label">_About Paint</attribute>
+				<attribute name="action">app.about</attribute>
+			</item>
+		</section>
+	</menu>
+	<menu id="tool_menu">
+		<section>
+			<item>
+				<attribute name="label">_Pencil</attribute>
+				<attribute name="action">app.tool</attribute>
+				<attribute name="target">pencil</attribute>
+			</item>
+			<item>
+				<attribute name="label">_Eraser</attribute>
+				<attribute name="action">app.tool</attribute>
+				<attribute name="target">eraser</attribute>
+			</item>
+		</section>
+	</menu>
+	<menu id="width_menu">
+		<section>
+			<item>
+				<attribute name="label">_Width...</attribute>
+				<attribute name="action">app.tool-width-dialog</attribute>
+			</item>
+		</section>
+		<section>
+			<item>
+				<attribute name="label">1</attribute>
+				<attribute name="action">app.tool-width</attribute>
+				<attribute name="target" type="i">1</attribute>
+			</item>
+			<item>
+				<attribute name="label">2</attribute>
+				<attribute name="action">app.tool-width</attribute>
+				<attribute name="target" type="i">2</attribute>
+			</item>
+			<item>
+				<attribute name="label">3</attribute>
+				<attribute name="action">app.tool-width</attribute>
+				<attribute name="target" type="i">3</attribute>
+			</item>
+		</section>
+	</menu>
+</interface>
