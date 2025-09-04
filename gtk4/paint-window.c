@@ -19,6 +19,8 @@ struct _PaintWindow
 {
 	GtkApplicationWindow parent_instance;
 	/* Template Widgets */
+	GtkAdjustment  *hadjustment;
+	GtkAdjustment  *vadjustment;
 	GtkDrawingArea *canvas;
 	GtkImage       *tool_image;
 	GtkLabel       *tool_label;
@@ -27,9 +29,9 @@ struct _PaintWindow
 	cairo_surface_t *surface;
 	GFile           *file;
 	int              tool_width;
-	gboolean         loading;
 };
 
+static void paint_window_change_adjustment_value (GtkAdjustment *adjustment, gpointer user_data);
 static void paint_window_class_init        (PaintWindowClass *self);
 static void paint_window_class_init_object (GObjectClass *self);
 static void paint_window_class_init_widget (GtkWidgetClass *self);
@@ -38,7 +40,11 @@ static void paint_window_dispose           (GObject *self);
 static void paint_window_draw              (GtkDrawingArea *canvas, cairo_t *context, int width, int height, gpointer self);
 static void paint_window_get_property      (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
 static void paint_window_init              (PaintWindow *self);
+static void paint_window_init_event_scroll (PaintWindow *self);
+static gboolean paint_window_on_scroll         (GtkEventControllerScroll *scroll, gdouble dx, gdouble dy, gpointer user_data);
+static void paint_window_resize_canvas     (GtkDrawingArea *area, int width, int height, gpointer user_data);
 static void paint_window_set_property      (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
+static void paint_window_update_scroll     (PaintWindow *self);
 
 /*******************************************************************************
 Paint Window クラス:
@@ -70,6 +76,12 @@ Paint Window クラス:
 #define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_MINIMUM       G_MININT
 #define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_MAXIMUM       G_MAXINT
 #define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_FLAGS         G_PARAM_READWRITE
+
+static void
+paint_window_change_adjustment_value (GtkAdjustment *adjustment, gpointer user_data)
+{
+	gtk_widget_queue_draw (GTK_WIDGET (PAINT_WINDOW (user_data)->canvas));
+}
 
 /*******************************************************************************
 クラスを初期化します。
@@ -103,6 +115,10 @@ paint_window_class_init_widget (GtkWidgetClass *self)
 	gtk_widget_class_bind_template_child (self, PaintWindow, tool_image);
 	gtk_widget_class_bind_template_child (self, PaintWindow, tool_label);
 	gtk_widget_class_bind_template_child (self, PaintWindow, tool_width_label);
+	gtk_widget_class_bind_template_child (self, PaintWindow, hadjustment);
+	gtk_widget_class_bind_template_child (self, PaintWindow, vadjustment);
+	gtk_widget_class_bind_template_callback (self, paint_window_resize_canvas);
+	gtk_widget_class_bind_template_callback (self, paint_window_change_adjustment_value);
 }
 
 /*******************************************************************************
@@ -135,11 +151,11 @@ paint_window_draw (GtkDrawingArea *canvas, cairo_t *context, int width, int heig
 	if (!properties->surface && properties->file)
 	{
 		properties->surface = paint_surface_create_from_file (cairo_get_target (context), properties->file);
-		g_print ("Surface: %p\n", properties->surface);
+		paint_window_update_scroll (properties);
 	}
 	if (properties->surface)
 	{
-		cairo_set_source_surface (context, properties->surface, 0, 0);
+		cairo_set_source_surface (context, properties->surface, -gtk_adjustment_get_value (properties->hadjustment), -gtk_adjustment_get_value (properties->vadjustment));
 		cairo_paint (context);
 	}
 }
@@ -206,7 +222,21 @@ paint_window_get_tool_width (PaintWindow *self)
 paint_window_init (PaintWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
+	paint_window_init_event_scroll (self);
 	gtk_drawing_area_set_draw_func (self->canvas, paint_window_draw, self, NULL);
+}
+
+static void
+paint_window_init_event_scroll (PaintWindow *self)
+{
+	GtkEventController *controller;
+	controller = gtk_event_controller_scroll_new (GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
+
+	if (controller)
+	{
+		g_signal_connect (controller, "scroll", G_CALLBACK (paint_window_on_scroll), self);
+		gtk_widget_add_controller (GTK_WIDGET (self->canvas), controller);
+	}
 }
 
 /*******************************************************************************
@@ -218,7 +248,32 @@ paint_window_new (GApplication *application, gboolean show_menubar, GFile *file)
 		PAINT_WINDOW_PROPERTY_APPLICATION_NAME, application,
 		PAINT_WINDOW_PROPERTY_SHOW_MENUBAR_NAME, show_menubar,
 		PAINT_WINDOW_PROPERTY_FILE_NAME, file,
+
 		NULL);
+}
+
+static gboolean
+paint_window_on_scroll (GtkEventControllerScroll *scroll, gdouble dx, gdouble dy, gpointer user_data)
+{
+	PaintWindow *self;
+	self = PAINT_WINDOW (user_data);
+	dx += gtk_adjustment_get_value (self->hadjustment);
+	dy += gtk_adjustment_get_value (self->vadjustment);
+	gtk_adjustment_set_value (self->hadjustment, dx);
+	gtk_adjustment_set_value (self->vadjustment, dy);
+	return TRUE;
+}
+
+static void
+paint_window_resize_canvas (GtkDrawingArea *area, int width, int height, gpointer user_data)
+{
+	GtkWidget *widget;
+	PaintWindow *self;
+	widget = GTK_WIDGET (area);
+	self = PAINT_WINDOW (user_data);
+	gtk_adjustment_set_page_size (self->hadjustment, gtk_widget_get_width (widget));
+	gtk_adjustment_set_page_size (self->vadjustment, gtk_widget_get_height (widget));
+	paint_window_update_scroll (PAINT_WINDOW (self));
 }
 
 /*******************************************************************************
@@ -269,6 +324,12 @@ paint_window_set_property (GObject *self, guint property_id, const GValue *value
 }
 
 void
+paint_window_set_tool_icon_name (PaintWindow *self, const char *value)
+{
+	gtk_image_set_from_icon_name (self->tool_image, value);
+}
+
+void
 paint_window_set_tool_label (PaintWindow *self, const char *value)
 {
 	gtk_label_set_label (self->tool_label, value);
@@ -281,4 +342,28 @@ paint_window_set_tool_width (PaintWindow *self, int value)
 	self->tool_width = value;
 	snprintf (text, G_N_ELEMENTS (text), "%d", value);
 	gtk_label_set_label (self->tool_width_label, text);
+}
+
+static void
+paint_window_update_scroll (PaintWindow *self)
+{
+	cairo_surface_t *image;
+	int width, height;
+	width = 0;
+	height = 0;
+
+	if (self->surface)
+	{
+		image = cairo_surface_map_to_image (self->surface, NULL);
+
+		if (image)
+		{
+			width = cairo_image_surface_get_width (image);
+			height = cairo_image_surface_get_height (image);
+			cairo_surface_unmap_image (self->surface, image);
+		}
+	}
+
+	gtk_adjustment_set_upper (self->hadjustment, width);
+	gtk_adjustment_set_upper (self->vadjustment, height);
 }

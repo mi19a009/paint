@@ -141,20 +141,25 @@ paint_application_change_menubar (GSimpleAction *action, GVariant *state, gpoint
 */ static void
 paint_application_change_tool (GSimpleAction *action, GVariant *state, gpointer self)
 {
+	const char *target;
 	GList *windows;
 	GtkWindow *window;
 	GValue value;
 	g_simple_action_set_state (action, state);
+	target = g_variant_get_string (state, NULL);
 	windows = gtk_application_get_windows (self);
+	g_value_init (&value, G_TYPE_STRING);
+	g_value_set_string (&value, target);
+	target = paint_tool_get_icon_name (paint_get_tool_type (target));
 
 	for (windows = gtk_application_get_windows (self); windows; windows = windows->next)
 	{
 		window = windows->data;
-		g_value_init (&value, G_TYPE_STRING);
-		g_value_set_string (&value, g_variant_get_string (state, NULL));
 		g_object_set_property (G_OBJECT (window), "tool-label", &value);
-		g_value_unset (&value);
+		paint_window_set_tool_icon_name (PAINT_WINDOW (window), target);
 	}
+
+	g_value_unset (&value);
 }
 
 /*******************************************************************************

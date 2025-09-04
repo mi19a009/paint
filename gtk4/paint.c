@@ -2,7 +2,6 @@
 #include <gtk/gtk.h>
 #include "paint.h"
 #define BITS_PER_SAMPLE 8
-#define PAINT_RESOURCE_PATH_FORMAT "/com/github/mi19a009/paint/%s"
 
 static void             paint_surface_copy_3_channels (guchar *destination, const guchar *source, int width, int height, int stride);
 static void             paint_surface_copy_4_channels (guchar *destination, const guchar *source, int width, int height, int stride);
@@ -10,12 +9,26 @@ static cairo_surface_t *paint_surface_create          (cairo_surface_t *other, g
 static guchar          *paint_surface_create_buffer   (const guchar *source, int width, int height, int stride, int n_channels);
 
 /*******************************************************************************
-リソースへのパスを取得します。
-プレフィックスの末尾に指定した文字列を連結します。
-*/ int
-paint_get_resource_path (char *buffer, size_t maxlen, const char *name)
+ペイント ツールを取得します。
+*/ PaintToolType
+paint_get_tool_type (const char *name)
 {
-	return snprintf (buffer, maxlen, PAINT_RESOURCE_PATH_FORMAT, name);
+	PaintToolType result;
+
+	if (!strcmp (name, "pencil"))
+	{
+		result = PAINT_TOOL_TYPE_PENCIL;
+	}
+	else if (!strcmp (name, "eraser"))
+	{
+		result = PAINT_TOOL_TYPE_ERASER;
+	}
+	else
+	{
+		result = PAINT_TOOL_TYPE_NULL;
+	}
+
+	return result;
 }
 
 /*******************************************************************************
@@ -172,6 +185,27 @@ paint_surface_create_from_file (cairo_surface_t *other, GFile *file)
 		}
 
 		g_object_unref (stream);
+	}
+
+	return result;
+}
+
+const char *
+paint_tool_get_icon_name (PaintToolType tool)
+{
+	const char *result;
+
+	switch (tool)
+	{
+	case PAINT_TOOL_TYPE_ERASER:
+		result = "eraser-symbolic";
+		break;
+	case PAINT_TOOL_TYPE_PENCIL:
+		result = "pencil-symbolic";
+		break;
+	default:
+		result = "";
+		break;
 	}
 
 	return result;

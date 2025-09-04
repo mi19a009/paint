@@ -27,8 +27,10 @@ enum _PaintLanguage
 	PAINT_N_LANGUAGES,
 };
 
+/* ペイント ツール */
 enum _PaintToolType
 {
+	PAINT_TOOL_TYPE_NULL,
 	PAINT_TOOL_TYPE_PENCIL,
 	PAINT_TOOL_TYPE_ERASER,
 	PAINT_TOOL_N_TYPES,
@@ -40,14 +42,16 @@ G_DECLARE_FINAL_TYPE     (PaintWindow,         paint_window,           PAINT, WI
 
 /* Paint モジュール */
 GResource       *paint_get_resource             (void);
-int              paint_get_resource_path        (char *buffer, size_t maxlen, const char *name);
+PaintToolType    paint_get_tool_type            (const char *name);
 cairo_surface_t *paint_surface_create_from_file (cairo_surface_t *other, GFile *file);
+const char      *paint_tool_get_icon_name       (PaintToolType tool);
 
 /* Paint Window クラス */
-GFile      *paint_window_get_file       (PaintWindow *self);
-const char *paint_window_get_tool_label (PaintWindow *self);
-int         paint_window_get_tool_width (PaintWindow *self);
-GtkWidget  *paint_window_new            (GApplication *application, gboolean show_menubar, GFile *file);
-void        paint_window_set_file       (PaintWindow *self, GFile *file);
-void        paint_window_set_tool_label (PaintWindow *self, const char *value);
-void        paint_window_set_tool_width (PaintWindow *self, int value);
+GFile      *paint_window_get_file           (PaintWindow *self);
+const char *paint_window_get_tool_label     (PaintWindow *self);
+int         paint_window_get_tool_width     (PaintWindow *self);
+GtkWidget  *paint_window_new                (GApplication *application, gboolean show_menubar, GFile *file);
+void        paint_window_set_file           (PaintWindow *self, GFile *file);
+void        paint_window_set_tool_icon_name (PaintWindow *self, const char *value);
+void        paint_window_set_tool_label     (PaintWindow *self, const char *value);
+void        paint_window_set_tool_width     (PaintWindow *self, int value);

@@ -30,7 +30,7 @@ $(GTK): $(OBJ)/%.o: %.c
 	@echo "$@ <- $<" && $(CC) $(CFLAGS) -c -o $@ $<
 $(PAINT): $(OBJ)/%.o: %.c paint.h
 	@echo "$@ <- $<" && $(CC) $(CFLAGS) -c -o $@ $<
-resource.c: paint.gresource.xml $(wildcard *.ui) $(wildcard gtk/*.ui) $(wildcard icons/16x16/actions/*.*)
+resource.c: paint.gresource.xml $(wildcard *.ui) $(wildcard gtk/*.ui) $(wildcard icons/16x16/actions/*.png) $(wildcard icons/scalable/actions/*.svg)
 	@echo "$@" && glib-compile-resources $< --target $@ --generate-source
 resource.h: paint.gresource.xml
 	@echo "$@" && glib-compile-resources $< --target $@ --generate-header
