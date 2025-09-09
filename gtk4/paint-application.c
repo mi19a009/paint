@@ -1,13 +1,22 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #include <gtk/gtk.h>
 #include "paint.h"
+#define ACTION_ABOUT        "about"
+#define ACTION_OPEN         "open"
+#define ACTION_SAVE         "save"
+#define ACTION_SAVE_AS      "save-as"
 #define ACTION_SHOW_MENUBAR "show-menubar"
-#define RESOURCE_ABOUT "/com/github/mi19a009/paint/gtk/about.ui"
-#define RESOURCE_ABOUT_DIALOG "dialog"
-#define RESOURCE_FILTERS "/com/github/mi19a009/paint/gtk/filters.ui"
+#define ACTION_TOOL         "tool"
+#define ACTION_TOOL_ERASER  "tool-eraser"
+#define ACTION_TOOL_PENCIL  "tool-pencil"
+#define ACTION_TOOL_WIDTH   "tool-width"
+#define RESOURCE_ABOUT         "/com/github/mi19a009/paint/gtk/about.ui"
+#define RESOURCE_ABOUT_DIALOG  "dialog"
+#define RESOURCE_FILTERS       "/com/github/mi19a009/paint/gtk/filters.ui"
 #define RESOURCE_FILTERS_FILES "file_filters"
 #define SIGNAL_DESTROY "destroy"
-#define TEXT_TITLE_OPEN "open"
+#define TEXT_TITLE_OPEN "Open"
+#define TEXT_TITLE_SAVE "Spen"
 
 typedef struct _PaintApplicationAccelEntry PaintApplicationAccelEntry;
 
@@ -15,6 +24,7 @@ typedef struct _PaintApplicationAccelEntry PaintApplicationAccelEntry;
 struct _PaintApplication
 {
 	GtkApplication parent_instance;
+	PaintTool     *tool;
 };
 
 /* Paint Application クラスのショートカット */
@@ -25,40 +35,59 @@ struct _PaintApplicationAccelEntry
 };
 
 static void     paint_application_activate               (GApplication *self);
-static void     paint_application_activate_about         (GSimpleAction *action, GVariant *parameter, gpointer self);
-static void     paint_application_activate_open          (GSimpleAction *action, GVariant *parameter, gpointer self);
-static void     paint_application_activate_radio         (GSimpleAction *action, GVariant *parameter, gpointer self);
-static void     paint_application_activate_toggle        (GSimpleAction *action, GVariant *parameter, gpointer self);
-static void     paint_application_change_menubar         (GSimpleAction *action, GVariant *state, gpointer self);
-static void     paint_application_change_tool            (GSimpleAction *action, GVariant *state, gpointer self);
-static void     paint_application_change_tool_width      (GSimpleAction *action, GVariant *state, gpointer self);
-static void     paint_application_class_init             (PaintApplicationClass *self);
-static void     paint_application_class_init_application (GApplicationClass *self);
+static void     paint_application_activate_about         (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_boolean       (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_open          (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_save          (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_save_as       (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_tool          (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_tool_eraser   (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_tool_pencil   (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_activate_tool_width    (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void     paint_application_change_menubar         (GSimpleAction *action, GVariant *state, gpointer user_data);
+static void     paint_application_change_tool            (GSimpleAction *action, GVariant *state, gpointer user_data);
+static void     paint_application_change_tool_width      (GSimpleAction *action, GVariant *state, gpointer user_data);
+static void     paint_application_class_init             (PaintApplicationClass *this_class);
+static void     paint_application_class_init_application (GApplicationClass *this_class);
+static void     paint_application_class_init_object      (GObjectClass *this_class);
 static void     paint_application_choose_file_open       (GtkApplication *self);
+static void     paint_application_choose_file_save       (GtkApplication *self);
+static void     paint_application_destroy                (PaintApplication *self);
+static void     paint_application_dispose                (GObject *self);
 static gboolean paint_application_get_show_menubar       (GActionGroup *self);
 static void     paint_application_init                   (PaintApplication *self);
 static void     paint_application_init_accels            (GtkApplication *self);
 static void     paint_application_open                   (GApplication *self, GFile **files, gint n_files, const gchar *hint);
-static void     paint_application_respond_open           (GObject *other, GAsyncResult *result, gpointer self);
+static void     paint_application_respond_open           (GObject *dialog, GAsyncResult *result, gpointer user_data);
+static void     paint_application_respond_save           (GObject *dialog, GAsyncResult *result, gpointer user_data);
+static void     paint_application_set_tool               (PaintApplication *self, PaintTool *tool);
 static void     paint_application_show_about             (GtkApplication *self);
 static void     paint_application_show_window            (GApplication *self, GFile *file);
 static void     paint_application_startup                (GApplication *self);
+static void     paint_application_update_menubar         (GtkApplication *self);
+static void     paint_application_update_tool            (PaintApplication *self);
 
 /* キーボード ショートカット */
 static PaintApplicationAccelEntry paint_application_accel_entries [] =
 {
 	{ "app.new", "<Ctrl>N" },
 	{ "app.open", "<Ctrl>O" },
+	{ "app.save", "<Ctrl>S" },
+	{ "app.save-as", "<Shift><Ctrl>S" },
 };
 
 /* メニュー アクション */
 static GActionEntry paint_application_action_entries [] =
 {
-	{ "about", paint_application_activate_about, NULL, NULL, NULL },
-	{ "open", paint_application_activate_open, NULL, NULL, NULL },
-	{ ACTION_SHOW_MENUBAR, paint_application_activate_toggle, NULL, "false", paint_application_change_menubar },
-	{ "tool", paint_application_activate_radio, "s", "'pencil'", paint_application_change_tool },
-	{ "tool-width", paint_application_activate_radio, "i", "1", paint_application_change_tool_width },
+	{ ACTION_ABOUT, paint_application_activate_about, NULL, NULL, NULL },
+	{ ACTION_OPEN, paint_application_activate_open, NULL, NULL, NULL },
+	{ ACTION_SAVE, paint_application_activate_save, NULL, NULL, NULL },
+	{ ACTION_SAVE_AS, paint_application_activate_save_as, NULL, NULL, NULL },
+	{ ACTION_SHOW_MENUBAR, paint_application_activate_boolean, NULL, "false", paint_application_change_menubar },
+	{ ACTION_TOOL, paint_application_activate_tool, "s", "'pencil'", paint_application_change_tool },
+	{ ACTION_TOOL_ERASER, paint_application_activate_tool_eraser, NULL, NULL, NULL },
+	{ ACTION_TOOL_PENCIL, paint_application_activate_tool_pencil, NULL, NULL, NULL },
+	{ ACTION_TOOL_WIDTH, paint_application_activate_tool_width, "i", "1", paint_application_change_tool_width },
 };
 
 /*******************************************************************************
@@ -83,31 +112,15 @@ paint_application_activate (GApplication *self)
 /*******************************************************************************
 バージョン情報ダイアログ ボックスを表示します。
 */ static void
-paint_application_activate_about (GSimpleAction *action, GVariant *parameter, gpointer self)
+paint_application_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	paint_application_show_about (GTK_APPLICATION (self));
-}
-
-/*******************************************************************************
-ファイルを開くダイアログ ボックスを表示します。
-*/ static void
-paint_application_activate_open (GSimpleAction *action, GVariant *parameter, gpointer self)
-{
-	paint_application_choose_file_open (GTK_APPLICATION (self));
-}
-
-/*******************************************************************************
-メニュー項目の選択を変更します。
-*/ static void
-paint_application_activate_radio (GSimpleAction *action, GVariant *parameter, gpointer self)
-{
-	g_action_change_state (G_ACTION (action), parameter);
+	paint_application_show_about (GTK_APPLICATION (user_data));
 }
 
 /*******************************************************************************
 メニュー項目の選択を切り替えます。
 */ static void
-paint_application_activate_toggle (GSimpleAction *action, GVariant *parameter, gpointer self)
+paint_application_activate_boolean (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	GAction *target;
 	GVariant *state;
@@ -118,87 +131,132 @@ paint_application_activate_toggle (GSimpleAction *action, GVariant *parameter, g
 }
 
 /*******************************************************************************
+ファイルを開くダイアログ ボックスを表示します。
+*/ static void
+paint_application_activate_open (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	paint_application_choose_file_open (GTK_APPLICATION (user_data));
+}
+
+/*******************************************************************************
+現在のファイルを保存します。
+*/ static void
+paint_application_activate_save (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+}
+
+/*******************************************************************************
+ファイルを保存ダイアログ ボックスを表示します。
+*/ static void
+paint_application_activate_save_as (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	paint_application_choose_file_save (GTK_APPLICATION (user_data));
+}
+
+/*******************************************************************************
+指定したツールを選択します。
+*/ static void
+paint_application_activate_tool (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	char name [16];
+	snprintf (name, G_N_ELEMENTS (name), "tool-%s", g_variant_get_string (parameter, NULL));
+	g_action_group_activate_action (G_ACTION_GROUP (user_data), name, NULL);
+	g_action_change_state (G_ACTION (action), parameter);
+}
+
+/*******************************************************************************
+消しゴム ツールを変更します。
+*/ static void
+paint_application_activate_tool_eraser (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	PaintTool *tool;
+	PaintApplication *self;
+	tool = paint_tool_eraser_new ();
+
+	if (tool)
+	{
+		self = PAINT_APPLICATION (user_data);
+		paint_tool_load (tool, self->tool);
+		paint_application_set_tool (self, tool);
+	}
+}
+
+/*******************************************************************************
+えんぴつツールを変更します。
+*/ static void
+paint_application_activate_tool_pencil (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	PaintTool *tool;
+	PaintApplication *self;
+	tool = paint_tool_pencil_new ();
+
+	if (tool)
+	{
+		self = PAINT_APPLICATION (user_data);
+		paint_tool_load (tool, self->tool);
+		paint_application_set_tool (self, tool);
+	}
+}
+
+/*******************************************************************************
+ツールの幅を変更します。
+*/ static void
+paint_application_activate_tool_width (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	g_action_change_state (G_ACTION (action), parameter);
+}
+
+/*******************************************************************************
 メニュー バーの表示を切り替えます。
 */ static void
-paint_application_change_menubar (GSimpleAction *action, GVariant *state, gpointer self)
+paint_application_change_menubar (GSimpleAction *action, GVariant *state, gpointer user_data)
 {
-	GList *windows;
-	GtkApplicationWindow *window;
-	gboolean menubar;
 	g_simple_action_set_state (action, state);
-	windows = gtk_application_get_windows (self);
-	menubar = g_variant_get_boolean (state);
-
-	for (windows = gtk_application_get_windows (self); windows; windows = windows->next)
-	{
-		window = GTK_APPLICATION_WINDOW (windows->data);
-		gtk_application_window_set_show_menubar (window, menubar);
-	}
+	paint_application_update_menubar (GTK_APPLICATION (user_data));
 }
 
 /*******************************************************************************
 ペイント ツールを変更します。
 */ static void
-paint_application_change_tool (GSimpleAction *action, GVariant *state, gpointer self)
+paint_application_change_tool (GSimpleAction *action, GVariant *state, gpointer user_data)
 {
-	const char *target;
-	GList *windows;
-	GtkWindow *window;
-	GValue value;
 	g_simple_action_set_state (action, state);
-	target = g_variant_get_string (state, NULL);
-	windows = gtk_application_get_windows (self);
-	g_value_init (&value, G_TYPE_STRING);
-	g_value_set_string (&value, target);
-	target = paint_tool_get_icon_name (paint_get_tool_type (target));
-
-	for (windows = gtk_application_get_windows (self); windows; windows = windows->next)
-	{
-		window = windows->data;
-		g_object_set_property (G_OBJECT (window), "tool-label", &value);
-		paint_window_set_tool_icon_name (PAINT_WINDOW (window), target);
-	}
-
-	g_value_unset (&value);
 }
 
 /*******************************************************************************
 ペイント ツールの幅を変更します。
 */ static void
-paint_application_change_tool_width (GSimpleAction *action, GVariant *state, gpointer self)
+paint_application_change_tool_width (GSimpleAction *action, GVariant *state, gpointer user_data)
 {
-	GList *windows;
-	GtkWindow *window;
-	GValue value;
 	g_simple_action_set_state (action, state);
-	windows = gtk_application_get_windows (self);
-
-	for (windows = gtk_application_get_windows (self); windows; windows = windows->next)
-	{
-		window = windows->data;
-		g_value_init (&value, G_TYPE_INT);
-		g_value_set_int (&value, g_variant_get_int32 (state));
-		g_object_set_property (G_OBJECT (window), "tool-width", &value);
-		g_value_unset (&value);
-	}
+	paint_tool_set_width (PAINT_APPLICATION (user_data)->tool, g_variant_get_int32 (state));
 }
 
 /*******************************************************************************
 クラスを初期化します。
 */ static void
-paint_application_class_init (PaintApplicationClass *self)
+paint_application_class_init (PaintApplicationClass *this_class)
 {
-	paint_application_class_init_application (G_APPLICATION_CLASS (self));
+	paint_application_class_init_object (G_OBJECT_CLASS (this_class));
+	paint_application_class_init_application (G_APPLICATION_CLASS (this_class));
 }
 
 /*******************************************************************************
-GApplication クラスを初期化します。
+Application クラスを初期化します。
 */ static void
-paint_application_class_init_application (GApplicationClass *self)
+paint_application_class_init_application (GApplicationClass *this_class)
 {
-	self->activate = paint_application_activate;
-	self->open = paint_application_open;
-	self->startup = paint_application_startup;
+	this_class->activate = paint_application_activate;
+	this_class->open = paint_application_open;
+	this_class->startup = paint_application_startup;
+}
+
+/*******************************************************************************
+Object クラスを初期化します。
+*/ static void
+paint_application_class_init_object (GObjectClass *this_class)
+{
+	this_class->dispose = paint_application_dispose;
 }
 
 /*******************************************************************************
@@ -224,6 +282,48 @@ paint_application_choose_file_open (GtkApplication *self)
 		gtk_file_dialog_open (dialog, gtk_application_get_active_window (self), NULL, paint_application_respond_open, self);
 		g_object_unref (dialog);
 	}
+}
+
+/*******************************************************************************
+ファイルを保存ダイアログ ボックスを表示します。
+*/ static void
+paint_application_choose_file_save (GtkApplication *self)
+{
+	GtkFileDialog *dialog;
+	GtkBuilder *builder;
+	dialog = gtk_file_dialog_new ();
+
+	if (dialog)
+	{
+		gtk_file_dialog_set_title (dialog, TEXT_TITLE_SAVE);
+		builder = gtk_builder_new_from_resource (RESOURCE_FILTERS);
+
+		if (builder)
+		{
+			gtk_file_dialog_set_filters (dialog, G_LIST_MODEL (gtk_builder_get_object (builder, RESOURCE_FILTERS_FILES)));
+			g_object_unref (builder);
+		}
+
+		gtk_file_dialog_save (dialog, gtk_application_get_active_window (self), NULL, paint_application_respond_save, self);
+		g_object_unref (dialog);
+	}
+}
+
+/*******************************************************************************
+クラスのプロパティを破棄します。
+*/ static void
+paint_application_destroy (PaintApplication *self)
+{
+	g_clear_object (&self->tool);
+}
+
+/*******************************************************************************
+クラスのインスタンスを破棄します。
+*/ static void
+paint_application_dispose (GObject *self)
+{
+	paint_application_destroy (PAINT_APPLICATION (self));
+	G_OBJECT_CLASS (paint_application_parent_class)->dispose (self);
 }
 
 /*******************************************************************************
@@ -253,6 +353,7 @@ paint_application_get_show_menubar (GActionGroup *self)
 */ static void
 paint_application_init (PaintApplication *self)
 {
+	self->tool = paint_tool_pencil_new ();
 	g_action_map_add_action_entries (G_ACTION_MAP (self), paint_application_action_entries, PAINT_APPLICATION_N_ACTION_ENTRIES, self);
 }
 
@@ -302,15 +403,54 @@ paint_application_open (GApplication *self, GFile **files, gint n_files, const g
 /*******************************************************************************
 ダイアログからファイルを指定して新しいウィンドウを作成します。
 */ static void
-paint_application_respond_open (GObject *other, GAsyncResult *result, gpointer self)
+paint_application_respond_open (GObject *dialog, GAsyncResult *result, gpointer user_data)
 {
 	GFile *file;
-	file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (other), result, NULL);
+	file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (dialog), result, NULL);
 
 	if (file)
 	{
-		paint_application_show_window (self, file);
+		paint_application_show_window (G_APPLICATION (user_data), file);
 		g_object_unref (file);
+	}
+}
+
+/*******************************************************************************
+ダイアログからファイルを指定してドキュメントを保存します。
+*/ static void
+paint_application_respond_save (GObject *dialog, GAsyncResult *result, gpointer user_data)
+{
+	GFile *file;
+	file = gtk_file_dialog_save_finish (GTK_FILE_DIALOG (dialog), result, NULL);
+
+	if (file)
+	{
+		g_object_unref (file);
+	}
+}
+
+/*******************************************************************************
+ツールを設定します。
+オブジェクトの参照数を増やします。
+*/ static void
+paint_application_set_tool (PaintApplication *self, PaintTool *tool)
+{
+	if (self->tool != tool)
+	{
+		if (self->tool)
+		{
+			g_object_unref (self->tool);
+		}
+		if (tool)
+		{
+			self->tool = g_object_ref (tool);
+		}
+		else
+		{
+			self->tool = NULL;
+		}
+
+		paint_application_update_tool (self);
 	}
 }
 
@@ -364,4 +504,44 @@ paint_application_startup (GApplication *self)
 {
 	G_APPLICATION_CLASS (paint_application_parent_class)->startup (self);
 	paint_application_init_accels (GTK_APPLICATION (self));
+}
+
+/*******************************************************************************
+各ウィンドウにメニュー バーを設定します。
+*/ static void
+paint_application_update_menubar (GtkApplication *self)
+{
+	GList *windows;
+	GtkWindow *window;
+	gboolean menubar;
+	menubar = paint_application_get_show_menubar (G_ACTION_GROUP (self));
+
+	for (windows = gtk_application_get_windows (self); windows; windows = windows->next)
+	{
+		window = windows->data;
+
+		if (GTK_IS_APPLICATION_WINDOW (window))
+		{
+			gtk_application_window_set_show_menubar (GTK_APPLICATION_WINDOW (window), menubar);
+		}
+	}
+}
+
+/*******************************************************************************
+各ウィンドウにツールを設定します。
+*/ static void
+paint_application_update_tool (PaintApplication *self)
+{
+	GList *windows;
+	GtkWindow *window;
+
+	for (windows = gtk_application_get_windows (GTK_APPLICATION (self)); windows; windows = windows->next)
+	{
+		window = windows->data;
+
+		if (PAINT_IS_WINDOW (window))
+		{
+			paint_window_set_tool (PAINT_WINDOW (window), self->tool);
+		}
+	}
 }

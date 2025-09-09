@@ -9,29 +9,6 @@ static cairo_surface_t *paint_surface_create          (cairo_surface_t *other, g
 static guchar          *paint_surface_create_buffer   (const guchar *source, int width, int height, int stride, int n_channels);
 
 /*******************************************************************************
-ペイント ツールを取得します。
-*/ PaintToolType
-paint_get_tool_type (const char *name)
-{
-	PaintToolType result;
-
-	if (!strcmp (name, "pencil"))
-	{
-		result = PAINT_TOOL_TYPE_PENCIL;
-	}
-	else if (!strcmp (name, "eraser"))
-	{
-		result = PAINT_TOOL_TYPE_ERASER;
-	}
-	else
-	{
-		result = PAINT_TOOL_TYPE_NULL;
-	}
-
-	return result;
-}
-
-/*******************************************************************************
 画素の配列を複製します。
 */ static void
 paint_surface_copy_3_channels (guchar *destination, const guchar *source, int width, int height, int stride)
@@ -185,27 +162,6 @@ paint_surface_create_from_file (cairo_surface_t *other, GFile *file)
 		}
 
 		g_object_unref (stream);
-	}
-
-	return result;
-}
-
-const char *
-paint_tool_get_icon_name (PaintToolType tool)
-{
-	const char *result;
-
-	switch (tool)
-	{
-	case PAINT_TOOL_TYPE_ERASER:
-		result = "eraser-symbolic";
-		break;
-	case PAINT_TOOL_TYPE_PENCIL:
-		result = "pencil-symbolic";
-		break;
-	default:
-		result = "";
-		break;
 	}
 
 	return result;

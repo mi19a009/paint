@@ -9,6 +9,9 @@ GTK = \
 PAINT = \
 	$(OBJ)/paint.o \
 	$(OBJ)/paint-application.o \
+	$(OBJ)/paint-tool.o \
+	$(OBJ)/paint-tool-eraser.o \
+	$(OBJ)/paint-tool-pencil.o \
 	$(OBJ)/paint-window.o
 .PHONY: all clean debug release target
 all: target $(OBJ)/paint

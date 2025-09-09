@@ -10,8 +10,7 @@ enum _PaintWindowProperty
 {
 	PAINT_WINDOW_PROPERTY_NULL,
 	PAINT_WINDOW_PROPERTY_FILE,
-	PAINT_WINDOW_PROPERTY_TOOL_LABEL,
-	PAINT_WINDOW_PROPERTY_TOOL_WIDTH,
+	PAINT_WINDOW_PROPERTY_TOOL,
 };
 
 /* Paint Window クラスのインスタンス */
@@ -28,23 +27,26 @@ struct _PaintWindow
 	/* Private Values */
 	cairo_surface_t *surface;
 	GFile           *file;
-	int              tool_width;
+	PaintTool       *tool;
 };
 
-static void paint_window_change_adjustment_value (GtkAdjustment *adjustment, gpointer user_data);
-static void paint_window_class_init        (PaintWindowClass *self);
-static void paint_window_class_init_object (GObjectClass *self);
-static void paint_window_class_init_widget (GtkWidgetClass *self);
-static void paint_window_destroy           (PaintWindow *self);
-static void paint_window_dispose           (GObject *self);
-static void paint_window_draw              (GtkDrawingArea *canvas, cairo_t *context, int width, int height, gpointer self);
-static void paint_window_get_property      (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
-static void paint_window_init              (PaintWindow *self);
-static void paint_window_init_event_scroll (PaintWindow *self);
+static void     paint_window_change_adjustment_value (GtkAdjustment *adjustment, gpointer user_data);
+static void     paint_window_class_init        (PaintWindowClass *self);
+static void     paint_window_class_init_object (GObjectClass *self);
+static void     paint_window_class_init_widget (GtkWidgetClass *self);
+static void     paint_window_destroy           (PaintWindow *self);
+static void     paint_window_dispose           (GObject *self);
+static void     paint_window_draw              (GtkDrawingArea *canvas, cairo_t *context, int width, int height, gpointer self);
+static void     paint_window_get_property      (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
+static void     paint_window_init              (PaintWindow *self);
+static void     paint_window_init_event_scroll (PaintWindow *self);
 static gboolean paint_window_on_scroll         (GtkEventControllerScroll *scroll, gdouble dx, gdouble dy, gpointer user_data);
-static void paint_window_resize_canvas     (GtkDrawingArea *area, int width, int height, gpointer user_data);
-static void paint_window_set_property      (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
-static void paint_window_update_scroll     (PaintWindow *self);
+static void     paint_window_on_tool_width     (GObject *other, GParamSpec *pspec, gpointer user_data);
+static void     paint_window_resize_canvas     (GtkDrawingArea *area, int width, int height, gpointer user_data);
+static void     paint_window_set_property      (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
+static void     paint_window_update_scroll     (PaintWindow *self);
+static void     paint_window_update_tool       (PaintWindow *self);
+static void     paint_window_update_tool_width (PaintWindow *self);
 
 /*******************************************************************************
 Paint Window クラス:
@@ -61,23 +63,16 @@ Paint Window クラス:
 #define PAINT_WINDOW_PROPERTY_FILE_OBJECT_TYPE G_TYPE_FILE
 #define PAINT_WINDOW_PROPERTY_FILE_FLAGS       G_PARAM_READWRITE
 
-/* Tool Label プロパティ */
-#define PAINT_WINDOW_PROPERTY_TOOL_LABEL_NAME          "tool-label"
-#define PAINT_WINDOW_PROPERTY_TOOL_LABEL_NICK          "Tool Label"
-#define PAINT_WINDOW_PROPERTY_TOOL_LABEL_BLURB         "Tool Label"
-#define PAINT_WINDOW_PROPERTY_TOOL_LABEL_DEFAULT_VALUE NULL
-#define PAINT_WINDOW_PROPERTY_TOOL_LABEL_FLAGS         G_PARAM_READWRITE
+/* Tool プロパティ */
+#define PAINT_WINDOW_PROPERTY_TOOL_NAME        "tool"
+#define PAINT_WINDOW_PROPERTY_TOOL_NICK        "Tool"
+#define PAINT_WINDOW_PROPERTY_TOOL_BLURB       "Tool"
+#define PAINT_WINDOW_PROPERTY_TOOL_OBJECT_TYPE PAINT_TYPE_TOOL
+#define PAINT_WINDOW_PROPERTY_TOOL_FLAGS       G_PARAM_READWRITE
 
-/* Tool Width プロパティ */
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_NAME          "tool-width"
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_NICK          "Tool Width"
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_BLURB         "Tool Width"
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_DEFAULT_VALUE 0
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_MINIMUM       G_MININT
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_MAXIMUM       G_MAXINT
-#define PAINT_WINDOW_PROPERTY_TOOL_WIDTH_FLAGS         G_PARAM_READWRITE
-
-static void
+/*******************************************************************************
+スクロール バーの値を変更します。
+*/ static void
 paint_window_change_adjustment_value (GtkAdjustment *adjustment, gpointer user_data)
 {
 	gtk_widget_queue_draw (GTK_WIDGET (PAINT_WINDOW (user_data)->canvas));
@@ -101,8 +96,7 @@ paint_window_class_init_object (GObjectClass *self)
 	self->get_property = paint_window_get_property;
 	self->set_property = paint_window_set_property;
 	PAINT_OBJECT_CLASS_INSTALL_PROPERTY (self, PAINT_WINDOW_PROPERTY_FILE, PAINT_PARAM_SPEC_OBJECT);
-	PAINT_OBJECT_CLASS_INSTALL_PROPERTY (self, PAINT_WINDOW_PROPERTY_TOOL_LABEL, PAINT_PARAM_SPEC_STRING);
-	PAINT_OBJECT_CLASS_INSTALL_PROPERTY (self, PAINT_WINDOW_PROPERTY_TOOL_WIDTH, PAINT_PARAM_SPEC_INT);
+	PAINT_OBJECT_CLASS_INSTALL_PROPERTY (self, PAINT_WINDOW_PROPERTY_TOOL, PAINT_PARAM_SPEC_OBJECT);
 }
 
 /*******************************************************************************
@@ -128,6 +122,7 @@ paint_window_destroy (PaintWindow *self)
 {
 	g_clear_pointer (&self->surface, cairo_surface_destroy);
 	g_clear_object (&self->file);
+	g_clear_object (&self->tool);
 }
 
 /*******************************************************************************
@@ -162,6 +157,7 @@ paint_window_draw (GtkDrawingArea *canvas, cairo_t *context, int width, int heig
 
 /*******************************************************************************
 現在のファイルを取得します。
+オブジェクトの参照数を増やします。
 */ GFile *
 paint_window_get_file (PaintWindow *self)
 {
@@ -192,11 +188,8 @@ paint_window_get_property (GObject *self, guint property_id, GValue *value, GPar
 	case PAINT_WINDOW_PROPERTY_FILE:
 		g_value_set_object (value, properties->file);
 		break;
-	case PAINT_WINDOW_PROPERTY_TOOL_LABEL:
-		g_value_set_string (value, paint_window_get_tool_label (properties));
-		break;
-	case PAINT_WINDOW_PROPERTY_TOOL_WIDTH:
-		g_value_set_int (value, paint_window_get_tool_width (properties));
+	case PAINT_WINDOW_PROPERTY_TOOL:
+		g_value_set_object (value, properties->tool);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
@@ -204,16 +197,24 @@ paint_window_get_property (GObject *self, guint property_id, GValue *value, GPar
 	}
 }
 
-const char *
-paint_window_get_tool_label (PaintWindow *self)
+/*******************************************************************************
+現在のツールを取得します。
+オブジェクトの参照数を増やします。
+*/ PaintTool *
+paint_window_get_tool (PaintWindow *self)
 {
-	return gtk_label_get_label (self->tool_label);
-}
+	PaintTool *tool;
 
-int
-paint_window_get_tool_width (PaintWindow *self)
-{
-	return self->tool_width;
+	if (self->tool)
+	{
+		tool = g_object_ref (self->tool);
+	}
+	else
+	{
+		tool = NULL;
+	}
+
+	return tool;
 }
 
 /*******************************************************************************
@@ -226,7 +227,9 @@ paint_window_init (PaintWindow *self)
 	gtk_drawing_area_set_draw_func (self->canvas, paint_window_draw, self, NULL);
 }
 
-static void
+/*******************************************************************************
+スクロール イベントを登録します。
+*/ static void
 paint_window_init_event_scroll (PaintWindow *self)
 {
 	GtkEventController *controller;
@@ -248,11 +251,13 @@ paint_window_new (GApplication *application, gboolean show_menubar, GFile *file)
 		PAINT_WINDOW_PROPERTY_APPLICATION_NAME, application,
 		PAINT_WINDOW_PROPERTY_SHOW_MENUBAR_NAME, show_menubar,
 		PAINT_WINDOW_PROPERTY_FILE_NAME, file,
-
 		NULL);
 }
 
-static gboolean
+/*******************************************************************************
+ウィンドウをスクロールします。
+イベントを処理した場合は TRUE を返します。
+*/ static gboolean
 paint_window_on_scroll (GtkEventControllerScroll *scroll, gdouble dx, gdouble dy, gpointer user_data)
 {
 	PaintWindow *self;
@@ -265,6 +270,14 @@ paint_window_on_scroll (GtkEventControllerScroll *scroll, gdouble dx, gdouble dy
 }
 
 static void
+paint_window_on_tool_width (GObject *other, GParamSpec *pspec, gpointer user_data)
+{
+	paint_window_update_tool_width (PAINT_WINDOW (user_data));
+}
+
+/*******************************************************************************
+描画領域の大きさを変更します。
+*/ static void
 paint_window_resize_canvas (GtkDrawingArea *area, int width, int height, gpointer user_data)
 {
 	GtkWidget *widget;
@@ -278,6 +291,7 @@ paint_window_resize_canvas (GtkDrawingArea *area, int width, int height, gpointe
 
 /*******************************************************************************
 現在のファイルを設定します。
+オブジェクトの参照数を増やします。
 */ void
 paint_window_set_file (PaintWindow *self, GFile *file)
 {
@@ -311,11 +325,8 @@ paint_window_set_property (GObject *self, guint property_id, const GValue *value
 	case PAINT_WINDOW_PROPERTY_FILE:
 		paint_window_set_file (properties, g_value_get_object (value));
 		break;
-	case PAINT_WINDOW_PROPERTY_TOOL_LABEL:
-		paint_window_set_tool_label (properties, g_value_get_string (value));
-		break;
-	case PAINT_WINDOW_PROPERTY_TOOL_WIDTH:
-		paint_window_set_tool_width (properties, g_value_get_int (value));
+	case PAINT_WINDOW_PROPERTY_TOOL:
+		paint_window_set_tool (properties, g_value_get_object (value));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
@@ -323,28 +334,36 @@ paint_window_set_property (GObject *self, guint property_id, const GValue *value
 	}
 }
 
-void
-paint_window_set_tool_icon_name (PaintWindow *self, const char *value)
+/*******************************************************************************
+現在のツールを設定します。
+オブジェクトの参照数を増やします。
+*/ void
+paint_window_set_tool (PaintWindow *self, PaintTool *tool)
 {
-	gtk_image_set_from_icon_name (self->tool_image, value);
+	if (self->tool != tool)
+	{
+		if (self->tool)
+		{
+			g_object_unref (self->tool);
+			g_signal_handlers_disconnect_by_func (self->tool, paint_window_on_tool_width, self);
+		}
+		if (tool)
+		{
+			self->tool = g_object_ref (tool);
+			g_signal_connect (tool, "notify::width", G_CALLBACK (paint_window_on_tool_width), self);
+		}
+		else
+		{
+			self->tool = NULL;
+		}
+
+		paint_window_update_tool (self);
+	}
 }
 
-void
-paint_window_set_tool_label (PaintWindow *self, const char *value)
-{
-	gtk_label_set_label (self->tool_label, value);
-}
-
-void
-paint_window_set_tool_width (PaintWindow *self, int value)
-{
-	char text [8];
-	self->tool_width = value;
-	snprintf (text, G_N_ELEMENTS (text), "%d", value);
-	gtk_label_set_label (self->tool_width_label, text);
-}
-
-static void
+/*******************************************************************************
+スクロール可能な範囲を更新します。
+*/ static void
 paint_window_update_scroll (PaintWindow *self)
 {
 	cairo_surface_t *image;
@@ -366,4 +385,54 @@ paint_window_update_scroll (PaintWindow *self)
 
 	gtk_adjustment_set_upper (self->hadjustment, width);
 	gtk_adjustment_set_upper (self->vadjustment, height);
+}
+
+/*******************************************************************************
+現在のツールに関する表示を更新します。
+*/ static void
+paint_window_update_tool (PaintWindow *self)
+{
+	const char *icon_name;
+	const char *nick;
+	float width;
+	char buffer [8];
+
+	if (self->tool)
+	{
+		icon_name = paint_tool_get_icon_name (self->tool);
+		nick = paint_tool_get_nick (self->tool);
+		width = paint_tool_get_width (self->tool);
+	}
+	else
+	{
+		icon_name = NULL;
+		nick = NULL;
+		width = 0;
+	}
+
+	snprintf (buffer, G_N_ELEMENTS (buffer), "%u", (guint16) width);
+	gtk_image_set_from_icon_name (self->tool_image, icon_name);
+	gtk_label_set_label (self->tool_label, nick);
+	gtk_label_set_label (self->tool_width_label, buffer);
+}
+
+/*******************************************************************************
+ツールの幅を表示します。
+*/ static void
+paint_window_update_tool_width (PaintWindow *self)
+{
+	float width;
+	char buffer [8];
+
+	if (self->tool)
+	{
+		width = paint_tool_get_width (self->tool);
+	}
+	else
+	{
+		width = 0;
+	}
+
+	snprintf (buffer, G_N_ELEMENTS (buffer), "%u", (guint16) width);
+	gtk_label_set_label (self->tool_width_label, buffer);
 }
