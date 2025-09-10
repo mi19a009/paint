@@ -10,6 +10,8 @@
 #define ACTION_TOOL_ERASER  "tool-eraser"
 #define ACTION_TOOL_PENCIL  "tool-pencil"
 #define ACTION_TOOL_WIDTH   "tool-width"
+#define MENU_ACCEL  "accel"
+#define MENU_ACTION "action"
 #define RESOURCE_ABOUT         "/com/github/mi19a009/paint/gtk/about.ui"
 #define RESOURCE_ABOUT_DIALOG  "dialog"
 #define RESOURCE_FILTERS       "/com/github/mi19a009/paint/gtk/filters.ui"
@@ -56,7 +58,9 @@ static void     paint_application_destroy                (PaintApplication *self
 static void     paint_application_dispose                (GObject *self);
 static gboolean paint_application_get_show_menubar       (GActionGroup *self);
 static void     paint_application_init                   (PaintApplication *self);
-static void     paint_application_init_accels            (GtkApplication *self);
+static void     paint_application_init_menu              (GtkApplication *self, GMenuModel *model);
+static void     paint_application_init_menu_attributes   (GtkApplication *self, GMenuModel *model, gint item_index);
+static void     paint_application_init_menu_links        (GtkApplication *self, GMenuModel *model, gint item_index);
 static void     paint_application_open                   (GApplication *self, GFile **files, gint n_files, const gchar *hint);
 static void     paint_application_respond_open           (GObject *dialog, GAsyncResult *result, gpointer user_data);
 static void     paint_application_respond_save           (GObject *dialog, GAsyncResult *result, gpointer user_data);
@@ -66,15 +70,6 @@ static void     paint_application_show_window            (GApplication *self, GF
 static void     paint_application_startup                (GApplication *self);
 static void     paint_application_update_menubar         (GtkApplication *self);
 static void     paint_application_update_tool            (PaintApplication *self);
-
-/* キーボード ショートカット */
-static PaintApplicationAccelEntry paint_application_accel_entries [] =
-{
-	{ "app.new", "<Ctrl>N" },
-	{ "app.open", "<Ctrl>O" },
-	{ "app.save", "<Ctrl>S" },
-	{ "app.save-as", "<Shift><Ctrl>S" },
-};
 
 /* メニュー アクション */
 static GActionEntry paint_application_action_entries [] =
@@ -95,7 +90,6 @@ Paint Application クラス:
 アプリケーションを表します。
 アプリケーションは各ドキュメント ウィンドウが共有する情報を格納します。
 */ G_DEFINE_FINAL_TYPE (PaintApplication, paint_application, GTK_TYPE_APPLICATION);
-#define PAINT_APPLICATION_N_ACCEL_ENTRIES (G_N_ELEMENTS (paint_application_accel_entries))
 #define PAINT_APPLICATION_N_ACTION_ENTRIES (G_N_ELEMENTS (paint_application_action_entries))
 #define PAINT_APPLICATION_PROPERTY_APPLICATION_ID_NAME "application-id"
 #define PAINT_APPLICATION_PROPERTY_FLAGS_NAME          "flags"
@@ -358,21 +352,79 @@ paint_application_init (PaintApplication *self)
 }
 
 /*******************************************************************************
-キーボード ショートカットを追加します。
+指定したメニューからアクセラレーターを走査します。
+この関数は再帰的に呼び出されます。
 */ static void
-paint_application_init_accels (GtkApplication *self)
+paint_application_init_menu (GtkApplication *self, GMenuModel *model)
 {
-	const PaintApplicationAccelEntry *entries;
-	const char *accels [2];
-	int index;
-	entries = paint_application_accel_entries;
-	accels [1] = NULL;
+	int n_items, index;
+	n_items = g_menu_model_get_n_items (model);
 
-	for (index = 0; index < PAINT_APPLICATION_N_ACCEL_ENTRIES; index++)
+	for (index = 0; index < n_items; index++)
 	{
-		*accels = entries->accel;
-		gtk_application_set_accels_for_action (self, entries->name, accels);
-		entries++;
+		paint_application_init_menu_attributes (self, model, index);
+		paint_application_init_menu_links (self, model, index);
+	}
+}
+
+/*******************************************************************************
+指定したメニューからアクセラレーターを取得します。
+現在のアプリケーションにアクセラレーターを設定します。
+*/ static void
+paint_application_init_menu_attributes (GtkApplication *self, GMenuModel *model, gint item_index)
+{
+	GVariant *accel, *action;
+	const char **accels, *buffer [2];
+	accel = g_menu_model_get_item_attribute_value (model, item_index, MENU_ACCEL, G_VARIANT_TYPE_STRING);
+
+	if (accel)
+	{
+		buffer [0] = g_variant_get_string (accel, NULL);
+		buffer [1] = NULL;
+		accels = buffer;
+	}
+	else
+	{
+		accel = g_menu_model_get_item_attribute_value (model, item_index, MENU_ACCEL, G_VARIANT_TYPE_STRING_ARRAY);
+
+		if (accel)
+		{
+			accels = g_variant_get_strv (accel, NULL);
+		}
+	}
+	if (accel)
+	{
+		action = g_menu_model_get_item_attribute_value (model, item_index, MENU_ACTION, G_VARIANT_TYPE_STRING);
+
+		if (action)
+		{
+			gtk_application_set_accels_for_action (self, g_variant_get_string (action, NULL), accels);
+			g_variant_unref (action);
+		}
+
+		g_variant_unref (accel);
+	}
+}
+
+/*******************************************************************************
+指定したメニューの子を走査します。
+*/ static void
+paint_application_init_menu_links (GtkApplication *self, GMenuModel *model, gint item_index)
+{
+	GMenuLinkIter *iterator;
+	GMenuModel *child;
+	iterator = g_menu_model_iterate_item_links (model, item_index);
+
+	if (iterator)
+	{
+		while (g_menu_link_iter_next (iterator))
+		{
+			child = g_menu_link_iter_get_value (iterator);
+			paint_application_init_menu (self, child);
+			g_object_unref (child);
+		}
+
+		g_object_unref (iterator);
 	}
 }
 
@@ -502,8 +554,10 @@ paint_application_show_window (GApplication *self, GFile *file)
 */ static void
 paint_application_startup (GApplication *self)
 {
+	GtkApplication *application;
 	G_APPLICATION_CLASS (paint_application_parent_class)->startup (self);
-	paint_application_init_accels (GTK_APPLICATION (self));
+	application = GTK_APPLICATION (self);
+	paint_application_init_menu (application, gtk_application_get_menubar (application));
 }
 
 /*******************************************************************************

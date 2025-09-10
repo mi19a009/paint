@@ -8,16 +8,19 @@
 				<item>
 					<attribute name="label">_New</attribute>
 					<attribute name="action">app.new</attribute>
+					<attribute name="accel">&lt;Ctrl&gt;N</attribute>
 				</item>
 				<item>
 					<attribute name="label">_Open</attribute>
 					<attribute name="action">app.open</attribute>
+					<attribute name="accel" type="as">["&lt;Ctrl&gt;O","&lt;Shift&gt;&lt;Ctrl&gt;O"]</attribute>
 				</item>
 			</section>
 			<section>
 				<item>
 					<attribute name="label">_Quit</attribute>
 					<attribute name="action">window.close</attribute>
+					<attribute name="accel">&lt;Ctrl&gt;Q</attribute>
 				</item>
 			</section>
 		</submenu>
@@ -27,6 +30,7 @@
 				<item>
 					<attribute name="label">_Help</attribute>
 					<attribute name="action">app.help</attribute>
+					<attribute name="accel">F1</attribute>
 				</item>
 				<item>
 					<attribute name="label">_About</attribute>
