@@ -1,0 +1,11 @@
+# Git Attributes
+*.c       text
+*.csv     text
+*.desktop text
+*.h       text
+*.md      text
+*.png     binary
+*.py      text
+*.svg     text
+*.ui      text
+*.xml     text
