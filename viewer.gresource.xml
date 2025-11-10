@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+	<gresource prefix="/com/github/mi19a009/viewer">
+		<file alias="gtk/help-overlay.ui" preprocess="xml-stripblanks">viewer/help.ui</file>
+		<file alias="gtk/menus.ui" preprocess="xml-stripblanks">viewer/menus.ui</file>
+		<file>icons/48x48/actions/viewer.png</file>
+	</gresource>
+</gresources>
