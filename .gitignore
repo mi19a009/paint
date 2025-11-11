@@ -2,7 +2,6 @@
 build
 debug
 locale
-msg
 release
 *.gresource.c
 *.ods

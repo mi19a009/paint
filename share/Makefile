@@ -10,11 +10,11 @@ all: $(OUT)
 clean:
 	@rm -rf build debug release
 $(OUT): $(SRCOBJ)
-	@echo $@
+	@echo "$(PWD)/$@"
 	@mkdir -p $(OUTDIR)
 	@ar rcs $@ $(SRCOBJ)
 	@touch $@
 $(SRCOBJ): $(TARGET)/%.o: %.c share.h
-	@echo $@
+	@echo "$(PWD)/$@"
 	@mkdir -p $(TARGET)
 	@$(CC) $(CFLAGS) -c -o $@ $<

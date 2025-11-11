@@ -1,4 +1,5 @@
 # Make Viewer
+ASSETS           =$(wildcard *.ui) $(wildcard ../icons/48x48/actions/*.png)
 override CFLAGS +=$(shell pkg-config gtk4 --cflags) -Wall -I../share
 LIBS             =$(shell pkg-config gtk4 --libs) -L../$(TARGET) -lshare
 OUT              =$(OUTDIR)/viewer
@@ -14,16 +15,17 @@ clean:
 	@rm -rf build debug release
 	@$(RM) resource.c
 $(OUT): $(RESOBJ) $(SRCOBJ)
-	@echo $@
+	@echo "$(PWD)/$@"
 	@mkdir -p $(OUTDIR)
 	@$(CC) $(CFLAGS) -o $@ $(RESOBJ) $(SRCOBJ) $(LIBS)
 $(RESOBJ): $(TARGET)/%.o: %.c
-	@echo $@
+	@echo "$(PWD)/$@"
 	@mkdir -p $(TARGET)
 	@$(CC) $(CFLAGS) -c -o $@ $<
 $(SRCOBJ): $(TARGET)/%.o: %.c viewer.h
-	@echo $@
+	@echo "$(PWD)/$@"
 	@mkdir -p $(TARGET)
 	@$(CC) $(CFLAGS) -c -o $@ $<
-resource.c:
-	@cd .. && $(MAKE) viewer/$@
+resource.c: viewer.gresource.xml $(ASSETS)
+	@echo "$(PWD)/$@"
+	@cd .. && glib-compile-resources --generate-source --target viewer/$@ viewer/$<
