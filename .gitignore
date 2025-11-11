@@ -6,3 +6,4 @@ msg
 release
 *.gresource.c
 *.ods
+resource.c
