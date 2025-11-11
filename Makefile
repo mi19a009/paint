@@ -1,11 +1,14 @@
 # Make
-ICONS  =$(wildcard ../icons/48x48/actions/*.png)
-PROJ   =paint viewer
-RES    =$(addsuffix /resource.c, $(PROJ))
-TARGET =build
+ICONS   =$(wildcard ../icons/48x48/actions/*.png)
+LINGUAS =ja
+MSG     =$(addprefix msg/, $(addsuffix .po, $(LINGUAS)))
+MSGOBJ  =locale/msg.mo
+PROJ    =paint viewer
+RES     =$(addsuffix /resource.c, $(PROJ))
+TARGET  =build
 export CFLAGS TARGET
 .PHONY: all clean debug msg release
-all:
+all: $(MSGOBJ)
 	@cd paint  && $(MAKE)
 	@cd viewer && $(MAKE)
 clean:
@@ -16,9 +19,13 @@ debug:
 	@$(MAKE) TARGET=$@ "CFLAGS=$(CFLAGS) -g -DG_ENABLE_DEBUG"
 release:
 	@$(MAKE) TARGET=$@ "CFLAGS=$(CFLAGS) -O2 -DNDEBUG -DG_DISABLE_ASSERT -DG_DISABLE_CAST_CHECKS"
-msg: msg.py msg.csv
-	@mkdir -p $@
+$(MSG): msg.py msg.csv
+	@mkdir -p msg
 	@python3 $<
+$(MSGOBJ): $(MSG)
+	@echo $@
+	@mkdir -p locale
+	@msgfmt -o $@ $(MSG)
 $(RES): %/resource.c: %.gresource.xml $(wildcard %/*.ui) $(ICONS)
 	@echo $@
 	@glib-compile-resources --generate-source --target $@ $<
