@@ -1,14 +1,8 @@
 # Make
-PAINT  =$(TARGET)/paint
-SHARE  =$(TARGET)/libshare.a
 TARGET =build
-VIEWER =$(TARGET)/viewer
 export CFLAGS TARGET
 .PHONY: all clean debug msg paint release share viewer
 all: msg paint viewer
-paint: $(PAINT)
-share: $(SHARE)
-viewer: $(VIEWER)
 clean:
 	@rm -rf build debug locale release
 	@cd msg && $(MAKE) $@
@@ -21,9 +15,9 @@ release:
 	@$(MAKE) TARGET=$@ "CFLAGS=$(CFLAGS) -O2 -DNDEBUG -DG_DISABLE_ASSERT -DG_DISABLE_CAST_CHECKS"
 msg:
 	@cd msg && $(MAKE)
-$(PAINT): $(SHARE)
+paint: share
 	@cd paint && $(MAKE)
-$(SHARE):
+share:
 	@cd share && $(MAKE)
-$(VIEWER): $(SHARE)
+viewer: share
 	@cd viewer && $(MAKE)

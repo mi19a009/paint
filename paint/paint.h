@@ -10,6 +10,7 @@ G_DECLARE_FINAL_TYPE (PaintDocumentWindow, paint_document_window, PAINT, DOCUMEN
 /* Paint */
 GResource    *paint_get_resource        (void);
 int           paint_get_resource_path   (char *buffer, size_t maxlen, const char *name);
+GSettings    *paint_get_settings        (void);
 /* Paint Application */
 GApplication *paint_application_new     (const char *application_id, GApplicationFlags flags);
 /* Paint Document Window */

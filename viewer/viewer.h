@@ -10,6 +10,7 @@ G_DECLARE_FINAL_TYPE (ViewerDocumentWindow, viewer_document_window, VIEWER, DOCU
 /* Viewer */
 GResource    *viewer_get_resource        (void);
 int           viewer_get_resource_path   (char *buffer, size_t maxlen, const char *name);
+GSettings    *viewer_get_settings        (void);
 /* Viewer Application */
 GApplication *viewer_application_new     (const char *application_id, GApplicationFlags flags);
 /* Viewer Document Window */
