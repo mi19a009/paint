@@ -1,6 +1,6 @@
 # Make Viewer
-override CFLAGS +=$(shell pkg-config gtk4 --cflags) -Wall
-LIBS             =$(shell pkg-config gtk4 --libs)
+override CFLAGS +=$(shell pkg-config gtk4 --cflags) -Wall -I../share
+LIBS             =$(shell pkg-config gtk4 --libs) -L../$(TARGET) -lshare
 OUT              =$(OUTDIR)/viewer
 OUTDIR           =../$(TARGET)
 RES              =resource.c

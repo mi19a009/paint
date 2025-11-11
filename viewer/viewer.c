@@ -1,5 +1,6 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #include <gtk/gtk.h>
+#include "share.h"
 #include "viewer.h"
 #define APPLICATION_ID    "com.github.mi19a009.viewer"
 #define APPLICATION_FLAGS G_APPLICATION_HANDLES_OPEN
@@ -13,6 +14,7 @@ main (int argc, char *argv [])
 {
 	GApplication *application;
 	int exitcode;
+	msginit ();
 	application = viewer_application_new (APPLICATION_ID, APPLICATION_FLAGS);
 	exitcode = g_application_run (application, argc, argv);
 	g_object_unref (application);
