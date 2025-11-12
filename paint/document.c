@@ -2,6 +2,8 @@
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 #include "paint.h"
+#include "share.h"
+#define LOGO_ICON_NAME        "paint"
 #define PROPERTY_APPLICATION  "application"
 #define PROPERTY_SHOW_MENUBAR "show-menubar"
 #define SETTINGS_HEIGHT       "window-height"
@@ -19,6 +21,7 @@ struct _PaintDocumentWindow
 	int                  maximized;
 };
 
+static void paint_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void paint_document_window_change_surface     (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
 static void paint_document_window_class_init         (PaintDocumentWindowClass *this_class);
 static void paint_document_window_class_init_object  (GObjectClass *this_class);
@@ -46,6 +49,22 @@ static void paint_document_window_update_size        (PaintDocumentWindow *self)
 * ウィンドウ破棄時はドキュメントを破棄します。
 */
 G_DEFINE_FINAL_TYPE (PaintDocumentWindow, paint_document_window, GTK_TYPE_APPLICATION_WINDOW);
+
+/* メニュー アクション */
+static const GActionEntry
+ACTION_ENTRIES [] =
+{
+	{ "show-about", paint_document_window_activate_about, NULL, NULL, NULL },
+};
+
+/*******************************************************************************
+* @brief バージョン情報ダイアログを表示します。
+*/
+static void
+paint_document_window_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	about (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
+}
 
 /*******************************************************************************
 * @brief ウィンドウの大きさを更新します。
@@ -150,6 +169,7 @@ paint_document_window_get_property (GObject *self, guint property_id, GValue *va
 static void
 paint_document_window_init (PaintDocumentWindow *self)
 {
+	g_action_map_add_action_entries (G_ACTION_MAP (self), ACTION_ENTRIES, G_N_ELEMENTS (ACTION_ENTRIES), self);
 	gtk_window_set_title (GTK_WINDOW (self), TITLE);
 	paint_document_window_init_canvas (self);
 }

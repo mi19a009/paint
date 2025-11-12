@@ -3,6 +3,7 @@
 #include <glib/gi18n.h>
 #include "viewer.h"
 #include "share.h"
+#define LOGO_ICON_NAME        "viewer"
 #define PROPERTY_APPLICATION  "application"
 #define PROPERTY_SHOW_MENUBAR "show-menubar"
 #define SETTINGS_HEIGHT       "window-height"
@@ -24,6 +25,7 @@ struct _ViewerDocumentWindow
 	int                  maximized;
 };
 
+static void     viewer_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void     viewer_document_window_activate_open      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void     viewer_document_window_change_surface     (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
 static void     viewer_document_window_class_init         (ViewerDocumentWindowClass *this_class);
@@ -62,8 +64,18 @@ G_DEFINE_FINAL_TYPE (ViewerDocumentWindow, viewer_document_window, GTK_TYPE_APPL
 static const GActionEntry
 ACTION_ENTRIES [] =
 {
-	{ "open", viewer_document_window_activate_open, NULL, NULL, NULL },
+	{ "show-about", viewer_document_window_activate_about, NULL, NULL, NULL },
+	{ "open",       viewer_document_window_activate_open,  NULL, NULL, NULL },
 };
+
+/*******************************************************************************
+* @brief バージョン情報ダイアログを表示します。
+*/
+static void
+viewer_document_window_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	about (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
+}
 
 /*******************************************************************************
 * @brief ファイルを開くダイアログを表示します。

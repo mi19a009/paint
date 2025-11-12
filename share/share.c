@@ -3,6 +3,8 @@
 #include <glib/gi18n.h>
 #include <locale.h>
 #include "share.h"
+#define ABOUT_COPYRIGHT        "Copyright © 2025 Taichi Murakami."
+#define ABOUT_WEBSITE          "https://mi19a009.github.io/paint/"
 #define ALERT_FORMAT           "%s"
 #define MSGINIT_CODESET        "UTF-8"
 #define MSGINIT_DOMAIN         "msg"
@@ -14,6 +16,38 @@
 #define PIXBUF_OVERALL_ALPHA   255
 #define PIXBUF_SCALE_X         1.0
 #define PIXBUF_SCALE_Y         1.0
+#define SIGNAL_DESTROY         "destroy"
+
+static void aboutdlg (GtkAboutDialog *dialog, const char *title, const char *logo_icon_name);
+static void modal (GtkWindow *window, GtkWindow *parent);
+static const char *ABOUT_AUTHORS [] = { "Taichi Murakami", NULL };
+
+/*******************************************************************************
+* @brief バージョン情報ダイアログを表示します。
+*/
+void
+about (GtkWindow *parent, const char *title, const char *logo_icon_name)
+{
+	GtkWidget *dialog;
+	dialog = gtk_about_dialog_new ();
+	g_signal_connect_swapped (dialog, SIGNAL_DESTROY, G_CALLBACK (gtk_window_destroy), dialog);
+	aboutdlg (GTK_ABOUT_DIALOG (dialog), title, logo_icon_name);
+	modal (GTK_WINDOW (dialog), parent);
+}
+
+/*******************************************************************************
+* @brief バージョン情報ダイアログを初期化します。
+*/
+static void
+aboutdlg (GtkAboutDialog *dialog, const char *title, const char *logo_icon_name)
+{
+	gtk_about_dialog_set_authors (dialog, ABOUT_AUTHORS);
+	gtk_about_dialog_set_copyright (dialog, ABOUT_COPYRIGHT);
+	gtk_about_dialog_set_license_type (dialog, GTK_LICENSE_APACHE_2_0);
+	gtk_about_dialog_set_logo_icon_name (dialog, logo_icon_name);
+	gtk_about_dialog_set_program_name (dialog, title);
+	gtk_about_dialog_set_website (dialog, ABOUT_WEBSITE);
+}
 
 /*******************************************************************************
 * @brief 指定したエラーを説明する文字列を表示します。
@@ -25,6 +59,18 @@ alert (GtkWindow *parent, const GError *error)
 	dialog = gtk_alert_dialog_new (ALERT_FORMAT, error->message);
 	gtk_alert_dialog_show (dialog, parent);
 	g_object_unref (dialog);
+}
+
+/*******************************************************************************
+* @brief 指定したモーダル ウィンドウを表示します。
+*/
+static void
+modal (GtkWindow *window, GtkWindow *parent)
+{
+	gtk_window_set_destroy_with_parent (window, TRUE);
+	gtk_window_set_modal (window, TRUE);
+	gtk_window_set_transient_for (window, parent);
+	gtk_window_present (window);
 }
 
 /*******************************************************************************
