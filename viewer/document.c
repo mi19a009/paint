@@ -7,6 +7,7 @@
 #define SETTINGS_HEIGHT       "window-height"
 #define SETTINGS_MAXIMIZED    "window-maximized"
 #define SETTINGS_WIDTH        "window-width"
+#define SIGNAL_NOTIFY_STATE   "notify::state"
 #define TITLE                 _("Picture Viewer")
 
 /* クラスのインスタンス */
@@ -18,12 +19,24 @@ struct _ViewerDocumentWindow
 	int                  maximized;
 };
 
-static void viewer_document_window_class_init        (ViewerDocumentWindowClass *this_class);
-static void viewer_document_window_class_init_object (GObjectClass *this_class);
-static void viewer_document_window_construct         (GObject *self);
-static void viewer_document_window_init              (ViewerDocumentWindow *self);
-static void viewer_document_window_init_settings     (ViewerDocumentWindow *self);
-static void viewer_document_window_load_settings     (ViewerDocumentWindow *self);
+static void viewer_document_window_change_surface     (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
+static void viewer_document_window_class_init         (ViewerDocumentWindowClass *this_class);
+static void viewer_document_window_class_init_object  (GObjectClass *this_class);
+static void viewer_document_window_class_init_widget  (GtkWidgetClass *this_class);
+static void viewer_document_window_connect_surface    (GtkWidget *self);
+static void viewer_document_window_constructed        (GObject *self);
+static void viewer_document_window_disconnect_surface (GtkWidget *self);
+static void viewer_document_window_dispose            (GObject *self);
+static void viewer_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
+static void viewer_document_window_init               (ViewerDocumentWindow *self);
+static void viewer_document_window_init_settings      (ViewerDocumentWindow *self);
+static void viewer_document_window_load_settings      (ViewerDocumentWindow *self);
+static void viewer_document_window_realize            (GtkWidget *self);
+static void viewer_document_window_save_settings      (ViewerDocumentWindow *self);
+static void viewer_document_window_set_property       (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
+static void viewer_document_window_size_allocate      (GtkWidget *self, int width, int height, int baseline);
+static void viewer_document_window_unrealize          (GtkWidget *self);
+static void viewer_document_window_update_size        (ViewerDocumentWindow *self);
 
 /*******************************************************************************
 * Viewer Document Window クラス。
@@ -34,12 +47,26 @@ static void viewer_document_window_load_settings     (ViewerDocumentWindow *self
 G_DEFINE_FINAL_TYPE (ViewerDocumentWindow, viewer_document_window, GTK_TYPE_APPLICATION_WINDOW);
 
 /*******************************************************************************
+* @brief ウィンドウの大きさを更新します。
+*/
+static void
+viewer_document_window_change_surface (GdkSurface *surface, GParamSpec *pspec, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	GdkToplevelState state;
+	state = gdk_toplevel_get_state (GDK_TOPLEVEL (surface));
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	self->maximized = (state & GDK_TOPLEVEL_STATE_MAXIMIZED) != 0;
+}
+
+/*******************************************************************************
 * @brief クラスを初期化します。
 */
 static void
 viewer_document_window_class_init (ViewerDocumentWindowClass *this_class)
 {
 	viewer_document_window_class_init_object (G_OBJECT_CLASS (this_class));
+	viewer_document_window_class_init_widget (GTK_WIDGET_CLASS (this_class));
 }
 
 /*******************************************************************************
@@ -48,17 +75,72 @@ viewer_document_window_class_init (ViewerDocumentWindowClass *this_class)
 static void
 viewer_document_window_class_init_object (GObjectClass *this_class)
 {
-	this_class->constructed = viewer_document_window_construct;
+	this_class->constructed = viewer_document_window_constructed;
+	this_class->dispose = viewer_document_window_dispose;
+	this_class->get_property = viewer_document_window_get_property;
+	this_class->set_property = viewer_document_window_set_property;
+}
+
+/*******************************************************************************
+* @brief Widget クラスを初期化します。
+*/
+static void
+viewer_document_window_class_init_widget (GtkWidgetClass *this_class)
+{
+	this_class->realize = viewer_document_window_realize;
+	this_class->size_allocate = viewer_document_window_size_allocate;
+	this_class->unrealize = viewer_document_window_unrealize;
+}
+
+/*******************************************************************************
+* @brief サーフィス通知を購読します。
+*/
+static void
+viewer_document_window_connect_surface (GtkWidget *self)
+{
+	GdkSurface *surface;
+	surface = gtk_native_get_surface (GTK_NATIVE (self));
+	g_signal_connect (surface, SIGNAL_NOTIFY_STATE, G_CALLBACK (viewer_document_window_change_surface), self);
 }
 
 /*******************************************************************************
 * @brief クラスのインスタンスを初期化します。
 */
 static void
-viewer_document_window_construct (GObject *self)
+viewer_document_window_constructed (GObject *self)
 {
 	viewer_document_window_init_settings (VIEWER_DOCUMENT_WINDOW (self));
 	G_OBJECT_CLASS (viewer_document_window_parent_class)->constructed (self);
+}
+
+/*******************************************************************************
+* @brief サーフィス通知を解約します。
+*/
+static void
+viewer_document_window_disconnect_surface (GtkWidget *self)
+{
+	GdkSurface *surface;
+	surface = gtk_native_get_surface (GTK_NATIVE (self));
+	g_signal_handlers_disconnect_by_func (surface, viewer_document_window_change_surface, self);
+}
+
+/*******************************************************************************
+* @brief クラスのインスタンスを破棄します。
+*/
+static void
+viewer_document_window_dispose (GObject *self)
+{
+	viewer_document_window_save_settings (VIEWER_DOCUMENT_WINDOW (self));
+	G_OBJECT_CLASS (viewer_document_window_parent_class)->dispose (self);
+}
+
+/*******************************************************************************
+* @brief プロパティを取得します。
+*/
+static void
+viewer_document_window_get_property (GObject *self, guint property_id, GValue *value, GParamSpec *pspec)
+{
+	G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
 }
 
 /*******************************************************************************
@@ -111,4 +193,69 @@ viewer_document_window_new (GApplication *application)
 		PROPERTY_APPLICATION, application,
 		PROPERTY_SHOW_MENUBAR, TRUE,
 		NULL);
+}
+
+/*******************************************************************************
+* @brief ウィンドウを表示します。
+*/
+static void
+viewer_document_window_realize (GtkWidget *self)
+{
+	GTK_WIDGET_CLASS (viewer_document_window_parent_class)->realize (self);
+	viewer_document_window_connect_surface (self);
+}
+
+/*******************************************************************************
+* @brief 環境設定を書き込みます。
+*/
+static void
+viewer_document_window_save_settings (ViewerDocumentWindow *self)
+{
+	GSettings *settings;
+	settings = viewer_get_settings ();
+	g_settings_set_int (settings, SETTINGS_WIDTH, self->width);
+	g_settings_set_int (settings, SETTINGS_HEIGHT, self->height);
+	g_settings_set_boolean (settings, SETTINGS_MAXIMIZED, self->maximized);
+	g_object_unref (settings);
+}
+
+/*******************************************************************************
+* @brief プロパティを設定します。
+*/
+static void
+viewer_document_window_set_property (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
+}
+
+/*******************************************************************************
+* @brief ウィンドウの大きさを更新します。
+*/
+static void
+viewer_document_window_size_allocate (GtkWidget *self, int width, int height, int baseline)
+{
+	GTK_WIDGET_CLASS (viewer_document_window_parent_class)->size_allocate (self, width, height, baseline);
+	viewer_document_window_update_size (VIEWER_DOCUMENT_WINDOW (self));
+}
+
+/*******************************************************************************
+* @brief ウィンドウを隠蔽します。
+*/
+static void
+viewer_document_window_unrealize (GtkWidget *self)
+{
+	viewer_document_window_disconnect_surface (self);
+	GTK_WIDGET_CLASS (viewer_document_window_parent_class)->unrealize (self);
+}
+
+/*******************************************************************************
+* @brief ウィンドウの大きさを更新します。
+*/
+static void
+viewer_document_window_update_size (ViewerDocumentWindow *self)
+{
+	if (!self->maximized)
+	{
+		gtk_window_get_default_size (GTK_WINDOW (self), &self->width, &self->height);
+	}
 }
