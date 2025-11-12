@@ -29,6 +29,7 @@ static void paint_document_window_disconnect_surface (GtkWidget *self);
 static void paint_document_window_dispose            (GObject *self);
 static void paint_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
 static void paint_document_window_init               (PaintDocumentWindow *self);
+static void paint_document_window_init_canvas        (PaintDocumentWindow *self);
 static void paint_document_window_init_settings      (PaintDocumentWindow *self);
 static void paint_document_window_load_settings      (PaintDocumentWindow *self);
 static void paint_document_window_realize            (GtkWidget *self);
@@ -150,6 +151,20 @@ static void
 paint_document_window_init (PaintDocumentWindow *self)
 {
 	gtk_window_set_title (GTK_WINDOW (self), TITLE);
+	paint_document_window_init_canvas (self);
+}
+
+/*******************************************************************************
+* @brief キャンバスを作成します。
+*/
+static void
+paint_document_window_init_canvas (PaintDocumentWindow *self)
+{
+	GtkWidget *child;
+	child = paint_canvas_new ();
+	gtk_widget_set_hexpand (child, TRUE);
+	gtk_widget_set_vexpand (child, TRUE);
+	gtk_window_set_child (GTK_WINDOW (self), child);
 }
 
 /*******************************************************************************

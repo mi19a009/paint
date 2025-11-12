@@ -36,6 +36,7 @@ G_DEFINE_FINAL_TYPE (ViewerApplication, viewer_application, GTK_TYPE_APPLICATION
 static const char *ACCELS_CLOSE        [] = { "<Ctrl>q", NULL };
 static const char *ACCELS_HELP_OVERLAY [] = { "<Ctrl>question", "<Ctrl>slash", NULL };
 static const char *ACCELS_NEW          [] = { "<Ctrl>n", NULL };
+static const char *ACCELS_OPEN         [] = { "<Ctrl>o", NULL };
 
 /* メニュー アクセラレーター */
 static const AccelEntry
@@ -44,6 +45,7 @@ ACCEL_ENTRIES [] =
 	{ "window.close",          ACCELS_CLOSE        },
 	{ "win.show-help-overlay", ACCELS_HELP_OVERLAY },
 	{ "app.new",               ACCELS_NEW          },
+	{ "win.open",              ACCELS_OPEN         },
 };
 
 /* メニュー アクション */

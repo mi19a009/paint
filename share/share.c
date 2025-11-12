@@ -3,13 +3,17 @@
 #include <glib/gi18n.h>
 #include <locale.h>
 #include "share.h"
-#define ALERT_FORMAT    "%s"
-#define MSGINIT_CODESET "UTF-8"
-#define MSGINIT_DOMAIN  "msg"
-#define MSGINIT_FORMAT  "%s"
-#define MSGINIT_LINK    "/proc/self/exe"
-#define MSGINIT_LOCALE  ""
-#define MSGINIT_PATH    "locale"
+#define ALERT_FORMAT           "%s"
+#define MSGINIT_CODESET        "UTF-8"
+#define MSGINIT_DOMAIN         "msg"
+#define MSGINIT_FORMAT         "%s"
+#define MSGINIT_LINK           "/proc/self/exe"
+#define MSGINIT_LOCALE         ""
+#define MSGINIT_PATH           "locale"
+#define PIXBUF_BITS_PER_SAMPLE 8
+#define PIXBUF_OVERALL_ALPHA   255
+#define PIXBUF_SCALE_X         1.0
+#define PIXBUF_SCALE_Y         1.0
 
 /*******************************************************************************
 * @brief 指定したエラーを説明する文字列を表示します。
@@ -54,4 +58,63 @@ msginit (void)
 		g_log (G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, MSGINIT_FORMAT, error->message);
 		g_error_free (error);
 	}
+}
+
+/*******************************************************************************
+* @brief 指定した画像のチャンネルを並び替えます。
+*/
+void
+pixcpy (const guchar *source, guchar *destination, int width, int height, int stride)
+{
+	const guchar *src;
+	guchar *dest;
+	int x, y;
+
+	for (y = 0; y < height; y++)
+	{
+		src = source;
+		dest = destination;
+
+		for (x = 0; x < width; x++)
+		{
+			*(dest++) = src [2];
+			*(dest++) = src [1];
+			*(dest++) = src [0];
+			*(dest++) = src [3];
+			src += 4;
+		}
+
+		source += stride;
+		destination += stride;
+	}
+}
+
+/*******************************************************************************
+* @brief 指定した画像ファイルを読み込みます。
+*/
+GdkPixbuf *
+pixload (GFile *file, GError **error)
+{
+	GdkPixbuf *source, *destination;
+	GFileInputStream *stream;
+	int width, height;
+	destination = NULL;
+	stream = g_file_read (file, NULL, error);
+
+	if (stream)
+	{
+		source = gdk_pixbuf_new_from_stream (G_INPUT_STREAM (stream), NULL, error);
+		g_object_unref (stream);
+
+		if (source)
+		{
+			width = gdk_pixbuf_get_width (source);
+			height = gdk_pixbuf_get_height (source);
+			destination = gdk_pixbuf_new (GDK_COLORSPACE_RGB, TRUE, PIXBUF_BITS_PER_SAMPLE, width, height);
+			gdk_pixbuf_composite (source, destination, 0, 0, width, height, 0, 0, PIXBUF_SCALE_X, PIXBUF_SCALE_Y, GDK_INTERP_NEAREST, PIXBUF_OVERALL_ALPHA);
+			g_object_unref (source);
+		}
+	}
+
+	return destination;
 }

@@ -1,5 +1,5 @@
 # Make Shared Library
-override CFLAGS +=$(shell pkg-config gtk4 --cflags) -Wall
+override CFLAGS +=-Wall $(shell pkg-config gtk4 --cflags)
 OUT              =$(OUTDIR)/libshare.a
 OUTDIR           =../$(TARGET)
 SRC              =share.c
