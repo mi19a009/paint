@@ -3,6 +3,7 @@
 *.csv     text
 *.desktop text
 *.h       text
+*.html    text
 *.md      text
 *.png     binary
 *.py      text
