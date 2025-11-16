@@ -1,4 +1,5 @@
 /* Copyright (C) 2025 Taichi Murakami. */
+#pragma once
 #include <gtk/gtk.h>
 #define PAINT_RESOURCE_PATH_CCH    64
 #define PAINT_TYPE_APPLICATION     (paint_application_get_type     ())

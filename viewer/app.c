@@ -27,6 +27,9 @@ static const char *ACCELS_HELP_OVERLAY [] = { "<Ctrl>question", "<Ctrl>slash", N
 static const char *ACCELS_NEW          [] = { "<Ctrl>n", NULL };
 static const char *ACCELS_OPEN         [] = { "<Ctrl>o", NULL };
 static const char *ACCELS_PRINT        [] = { "<Ctrl>p", NULL };
+static const char *ACCELS_RESTORE_ZOOM [] = { "<Ctrl>0", NULL };
+static const char *ACCELS_ZOOM_IN      [] = { "<Ctrl>plus", "<Ctrl>semicolon", NULL };
+static const char *ACCELS_ZOOM_OUT     [] = { "<Ctrl>minus", NULL };
 
 /* メニュー アクセラレーター */
 static const ShareAccelEntry
@@ -37,6 +40,9 @@ ACCEL_ENTRIES [] =
 	{ "app.new",               ACCELS_NEW          },
 	{ "win.open",              ACCELS_OPEN         },
 	{ "win.print",             ACCELS_PRINT        },
+	{ "win.restore-zoom",      ACCELS_RESTORE_ZOOM },
+	{ "win.zoom-in",           ACCELS_ZOOM_IN      },
+	{ "win.zoom-out",          ACCELS_ZOOM_OUT     },
 };
 
 /* メニュー アクション */

@@ -23,6 +23,11 @@
 #define TITLE                       _("Picture Viewer")
 #define TITLE_CCH                   256
 #define TITLE_FORMAT                "%s - %s"
+#define TITLE_FORMAT_ZOOM           "%d%% %s - %s"
+#define ZOOM_PROPERTY_DEFAULT_VALUE 100
+#define ZOOM_PROPERTY_MINIMUM       5
+#define ZOOM_PROPERTY_MAXIMUM       2000
+#define ZOOM_RATIO                  1.25F
 
 /* クラスのプロパティ */
 enum _ViewerDocumentWindowProperties
@@ -39,40 +44,46 @@ struct _ViewerDocumentWindow
 	GFile               *file;
 	GdkPixbuf           *pixbuf;
 	GtkWidget           *area;
+	int                  zoom;
 	int                  width;
 	int                  height;
 	int                  maximized;
 };
 
-static void viewer_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void viewer_document_window_activate_open      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void viewer_document_window_activate_print     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void viewer_document_window_class_init         (ViewerDocumentWindowClass *this_class);
-static void viewer_document_window_class_init_object  (GObjectClass *this_class);
-static void viewer_document_window_class_init_widget  (GtkWidgetClass *this_class);
-static void viewer_document_window_constructed        (GObject *self);
-static void viewer_document_window_destroy            (ViewerDocumentWindow *self);
-static void viewer_document_window_dispose            (GObject *self);
-static void viewer_document_window_draw               (GtkDrawingArea *area, cairo_t *cairo, int width, int height, gpointer user_data);
-static void viewer_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
-static void viewer_document_window_init               (ViewerDocumentWindow *self);
-static void viewer_document_window_init_area          (ViewerDocumentWindow *self);
-static void viewer_document_window_init_content       (ViewerDocumentWindow *self);
-static void viewer_document_window_init_settings      (ViewerDocumentWindow *self);
-static void viewer_document_window_realize            (GtkWidget *self);
-static void viewer_document_window_respond_open       (GObject *dialog, GAsyncResult *result, gpointer user_data);
-static void viewer_document_window_set_property       (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
-static void viewer_document_window_settings_apply     (ViewerDocumentWindow *self);
-static void viewer_document_window_settings_load      (ViewerDocumentWindow *self);
-static void viewer_document_window_settings_save      (ViewerDocumentWindow *self);
-static void viewer_document_window_size_allocate      (GtkWidget *self, int width, int height, int baseline);
-static void viewer_document_window_surface_changed    (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
-static void viewer_document_window_surface_connect    (GtkWidget *self);
-static void viewer_document_window_surface_disconnect (GtkWidget *self);
-static void viewer_document_window_unrealize          (GtkWidget *self);
-static void viewer_document_window_update_area        (ViewerDocumentWindow *self);
-static void viewer_document_window_update_size        (ViewerDocumentWindow *self);
-static void viewer_document_window_update_title       (ViewerDocumentWindow *self);
+static void viewer_document_window_activate_about        (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_open         (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_print        (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_restore_zoom (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_zoom_in      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_zoom_out     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_class_init            (ViewerDocumentWindowClass *this_class);
+static void viewer_document_window_class_init_object     (GObjectClass *this_class);
+static void viewer_document_window_class_init_widget     (GtkWidgetClass *this_class);
+static void viewer_document_window_constructed           (GObject *self);
+static void viewer_document_window_destroy               (ViewerDocumentWindow *self);
+static void viewer_document_window_dispose               (GObject *self);
+static void viewer_document_window_draw                  (GtkDrawingArea *area, cairo_t *cairo, int width, int height, gpointer user_data);
+static void viewer_document_window_enable_actions        (GActionMap *self, gboolean enabled);
+static void viewer_document_window_get_property          (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
+static void viewer_document_window_init                  (ViewerDocumentWindow *self);
+static void viewer_document_window_init_actions          (GActionMap *self);
+static void viewer_document_window_init_area             (ViewerDocumentWindow *self);
+static void viewer_document_window_init_content          (ViewerDocumentWindow *self);
+static void viewer_document_window_init_settings         (ViewerDocumentWindow *self);
+static void viewer_document_window_realize               (GtkWidget *self);
+static void viewer_document_window_respond_open          (GObject *dialog, GAsyncResult *result, gpointer user_data);
+static void viewer_document_window_set_property          (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
+static void viewer_document_window_settings_apply        (ViewerDocumentWindow *self);
+static void viewer_document_window_settings_load         (ViewerDocumentWindow *self);
+static void viewer_document_window_settings_save         (ViewerDocumentWindow *self);
+static void viewer_document_window_size_allocate         (GtkWidget *self, int width, int height, int baseline);
+static void viewer_document_window_surface_changed       (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
+static void viewer_document_window_surface_connect       (GtkWidget *self);
+static void viewer_document_window_surface_disconnect    (GtkWidget *self);
+static void viewer_document_window_unrealize             (GtkWidget *self);
+static void viewer_document_window_update_area           (ViewerDocumentWindow *self);
+static void viewer_document_window_update_size           (ViewerDocumentWindow *self);
+static void viewer_document_window_update_title          (ViewerDocumentWindow *self);
 
 /*******************************************************************************
 * Viewer Document Window クラス:
@@ -81,14 +92,18 @@ static void viewer_document_window_update_title       (ViewerDocumentWindow *sel
 * ウィンドウ破棄時はドキュメントを破棄します。
 */
 G_DEFINE_FINAL_TYPE (ViewerDocumentWindow, viewer_document_window, GTK_TYPE_APPLICATION_WINDOW);
+static const char *DISABLED_ACTIONS [] = { "print", "restore-zoom", "zoom-in", "zoom-out" };
 
 /* メニュー アクション */
 static const GActionEntry
 ACTION_ENTRIES [] =
 {
-	{ "show-about", viewer_document_window_activate_about,  NULL, NULL, NULL },
-	{ "open",       viewer_document_window_activate_open,   NULL, NULL, NULL },
-	{ "print",      viewer_document_window_activate_print,  NULL, NULL, NULL },
+	{ "show-about",   viewer_document_window_activate_about,        NULL, NULL, NULL },
+	{ "open",         viewer_document_window_activate_open,         NULL, NULL, NULL },
+	{ "print",        viewer_document_window_activate_print,        NULL, NULL, NULL },
+	{ "restore-zoom", viewer_document_window_activate_restore_zoom, NULL, NULL, NULL },
+	{ "zoom-in",      viewer_document_window_activate_zoom_in,      NULL, NULL, NULL },
+	{ "zoom-out",     viewer_document_window_activate_zoom_out,     NULL, NULL, NULL },
 };
 
 /*******************************************************************************
@@ -132,6 +147,41 @@ viewer_document_window_activate_print (GSimpleAction *action, GVariant *paramete
 			g_error_free (error);
 		}
 	}
+}
+
+/*******************************************************************************
+* @brief 既定の拡大率に戻します。
+*/
+static void
+viewer_document_window_activate_restore_zoom (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	viewer_document_window_set_zoom (VIEWER_DOCUMENT_WINDOW (user_data), ZOOM_PROPERTY_DEFAULT_VALUE);
+}
+
+/*******************************************************************************
+* @brief 詳細表示します。
+*/
+static void
+viewer_document_window_activate_zoom_in (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	float zoom;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	zoom = viewer_document_window_get_zoom_percent (self) * ZOOM_RATIO;
+	viewer_document_window_set_zoom_percent (self, zoom);
+}
+
+/*******************************************************************************
+* @brief 広域表示します。
+*/
+static void
+viewer_document_window_activate_zoom_out (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	float zoom;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	zoom = viewer_document_window_get_zoom_percent (self) / ZOOM_RATIO;
+	viewer_document_window_set_zoom_percent (self, zoom);
 }
 
 /*******************************************************************************
@@ -207,12 +257,39 @@ static void
 viewer_document_window_draw (GtkDrawingArea *area, cairo_t *cairo, int width, int height, gpointer user_data)
 {
 	ViewerDocumentWindow *self;
+	double zoom;
 	self = VIEWER_DOCUMENT_WINDOW (user_data);
 
 	if (self->pixbuf)
 	{
+		if (self->zoom != ZOOM_PROPERTY_DEFAULT_VALUE)
+		{
+			zoom = viewer_document_window_get_zoom_percent (self);
+			cairo_scale (cairo, zoom, zoom);
+		}
+
 		gdk_cairo_set_source_pixbuf (cairo, self->pixbuf, 0, 0);
 		cairo_paint (cairo);
+	}
+}
+
+/*******************************************************************************
+* @brief アクションを有効化します。
+*/
+static void
+viewer_document_window_enable_actions (GActionMap *self, gboolean enabled)
+{
+	GAction *action;
+	int n;
+
+	for (n = 0; n < G_N_ELEMENTS (DISABLED_ACTIONS); n++)
+	{
+		action = g_action_map_lookup_action (self, DISABLED_ACTIONS [n]);
+
+		if (G_IS_SIMPLE_ACTION (action))
+		{
+			g_simple_action_set_enabled (G_SIMPLE_ACTION (action), enabled);
+		}
 	}
 }
 
@@ -262,16 +339,45 @@ viewer_document_window_get_property (GObject *self, guint property_id, GValue *v
 }
 
 /*******************************************************************************
+* @brief 拡大率を取得します。
+*/
+int
+viewer_document_window_get_zoom (ViewerDocumentWindow *self)
+{
+	return self->zoom;
+}
+
+/*******************************************************************************
+* @brief 拡大率を取得します。
+*/
+float
+viewer_document_window_get_zoom_percent (ViewerDocumentWindow *self)
+{
+	return self->zoom / (float) ZOOM_PROPERTY_DEFAULT_VALUE;
+}
+
+/*******************************************************************************
 * @brief クラスのインスタンスを初期化します。
 */
 static void
 viewer_document_window_init (ViewerDocumentWindow *self)
 {
-	g_action_map_add_action_entries (G_ACTION_MAP (self), ACTION_ENTRIES, G_N_ELEMENTS (ACTION_ENTRIES), self);
+	self->zoom = ZOOM_PROPERTY_DEFAULT_VALUE;
+	viewer_document_window_init_actions (G_ACTION_MAP (self));
 	viewer_document_window_init_content (self);
 	viewer_document_window_init_area (self);
 	viewer_document_window_update_title (self);
 	viewer_document_window_update_area (self);
+}
+
+/*******************************************************************************
+* @brief アクションを追加します。
+*/
+static void
+viewer_document_window_init_actions (GActionMap *self)
+{
+	g_action_map_add_action_entries (G_ACTION_MAP (self), ACTION_ENTRIES, G_N_ELEMENTS (ACTION_ENTRIES), self);
+	viewer_document_window_enable_actions (self, FALSE);
 }
 
 /*******************************************************************************
@@ -389,14 +495,26 @@ viewer_document_window_set_file (ViewerDocumentWindow *self, GFile *file)
 void
 viewer_document_window_set_pixbuf (ViewerDocumentWindow *self, GdkPixbuf *pixbuf)
 {
+	gboolean enabled;
+
 	if (self->pixbuf != pixbuf)
 	{
 		if (self->pixbuf)
 		{
 			g_object_unref (self->pixbuf);
 		}
+		if (pixbuf)
+		{
+			self->pixbuf = g_object_ref (pixbuf);
+			enabled = TRUE;
+		}
+		else
+		{
+			self->pixbuf = NULL;
+			enabled = FALSE;
+		}
 
-		self->pixbuf = pixbuf ? g_object_ref (pixbuf) : NULL;
+		viewer_document_window_enable_actions (G_ACTION_MAP (self), enabled);
 		viewer_document_window_update_area (self);
 		gtk_widget_queue_draw (self->area);
 	}
@@ -423,6 +541,32 @@ viewer_document_window_set_property (GObject *self, guint property_id, const GVa
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
 		break;
 	}
+}
+
+/*******************************************************************************
+* @brief 拡大率を設定します。
+*/
+void
+viewer_document_window_set_zoom (ViewerDocumentWindow *self, int zoom)
+{
+	zoom = CLAMP (zoom, ZOOM_PROPERTY_MINIMUM, ZOOM_PROPERTY_MAXIMUM);
+
+	if (self->zoom != zoom)
+	{
+		self->zoom = zoom;
+		viewer_document_window_update_title (self);
+		viewer_document_window_update_area (self);
+		gtk_widget_queue_draw (self->area);
+	}
+}
+
+/*******************************************************************************
+* @brief 拡大率を設定します。
+*/
+void
+viewer_document_window_set_zoom_percent (ViewerDocumentWindow *self, float zoom)
+{
+	viewer_document_window_set_zoom (self, zoom * ZOOM_PROPERTY_DEFAULT_VALUE);
 }
 
 /*******************************************************************************
@@ -532,11 +676,19 @@ viewer_document_window_update_area (ViewerDocumentWindow *self)
 {
 	GtkDrawingArea *area;
 	int width, height;
+	float zoom;
 
 	if (self->pixbuf)
 	{
 		width = gdk_pixbuf_get_width (self->pixbuf);
 		height = gdk_pixbuf_get_height (self->pixbuf);
+
+		if (self->zoom != ZOOM_PROPERTY_DEFAULT_VALUE)
+		{
+			zoom = viewer_document_window_get_zoom_percent (self);
+			width *= zoom;
+			height *= zoom;
+		}
 	}
 	else
 	{
@@ -573,7 +725,16 @@ viewer_document_window_update_title (ViewerDocumentWindow *self)
 	if (self->file)
 	{
 		name = g_file_get_basename (self->file);
-		g_snprintf (title, TITLE_CCH, TITLE_FORMAT, name, TITLE);
+
+		if (self->zoom == ZOOM_PROPERTY_DEFAULT_VALUE)
+		{
+			g_snprintf (title, TITLE_CCH, TITLE_FORMAT, name, TITLE);
+		}
+		else
+		{
+			g_snprintf (title, TITLE_CCH, TITLE_FORMAT_ZOOM, self->zoom, name, TITLE);
+		}
+
 		gtk_window_set_title (GTK_WINDOW (self), title);
 		g_free (name);
 	}
