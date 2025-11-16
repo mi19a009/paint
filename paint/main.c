@@ -1,7 +1,7 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #include <gtk/gtk.h>
-#include "share.h"
 #include "paint.h"
+#include "share.h"
 #define APPLICATION_ID    "com.github.mi19a009.paint"
 #define APPLICATION_FLAGS G_APPLICATION_HANDLES_OPEN
 #define RESOURCE_FORMAT   "/com/github/mi19a009/paint/%s"
@@ -12,13 +12,7 @@
 int
 main (int argc, char *argv [])
 {
-	GApplication *application;
-	int exitcode;
-	msginit ();
-	application = paint_application_new (APPLICATION_ID, APPLICATION_FLAGS);
-	exitcode = g_application_run (application, argc, argv);
-	g_object_unref (application);
-	return exitcode;
+	return share_application_run (argc, argv, PAINT_TYPE_APPLICATION, APPLICATION_ID, APPLICATION_FLAGS);
 }
 
 /*******************************************************************************

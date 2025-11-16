@@ -9,16 +9,22 @@ G_DECLARE_FINAL_TYPE (PaintApplication,    paint_application,     PAINT, APPLICA
 G_DECLARE_FINAL_TYPE (PaintCanvas,         paint_canvas,          PAINT, CANVAS,          GtkGrid);
 G_DECLARE_FINAL_TYPE (PaintDocumentWindow, paint_document_window, PAINT, DOCUMENT_WINDOW, GtkApplicationWindow);
 
-/* Paint モジュール */
+/*******************************************************************************
+* Paint モジュール:
+*/
 GResource *paint_get_resource      (void);
 int        paint_get_resource_path (char *buffer, size_t maxlen, const char *name);
 GSettings *paint_get_settings      (void);
-/* Paint Application モジュール */
-GApplication *paint_application_new (const char *application_id, GApplicationFlags flags);
-/* Paint Canvas モジュール */
+
+/*******************************************************************************
+* Paint Canvas モジュール:
+*/
 GtkWidget *paint_canvas_get_area       (PaintCanvas *self);
 GtkWidget *paint_canvas_get_hscrollbar (PaintCanvas *self);
 GtkWidget *paint_canvas_get_vscrollbar (PaintCanvas *self);
 GtkWidget *paint_canvas_new            (void);
-/* Paint Document Window モジュール */
+
+/*******************************************************************************
+* Paint Document Window モジュール:
+*/
 GtkWidget *paint_document_window_new (GApplication *application);

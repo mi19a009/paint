@@ -12,13 +12,7 @@
 int
 main (int argc, char *argv [])
 {
-	GApplication *application;
-	int exitcode;
-	msginit ();
-	application = draw_application_new (APPLICATION_ID, APPLICATION_FLAGS);
-	exitcode = g_application_run (application, argc, argv);
-	g_object_unref (application);
-	return exitcode;
+	return share_application_run (argc, argv, DRAW_TYPE_APPLICATION, APPLICATION_ID, APPLICATION_FLAGS);
 }
 
 /*******************************************************************************

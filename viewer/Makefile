@@ -10,7 +10,7 @@ RESOBJ           =$(addprefix $(TARGET)/, $(RES:%.c=%.o))
 SCHEMA           =$(SCHEMAS)/$(NAME).gschema.xml
 SCHEMAS          =$(HOME)/.local/share/glib-2.0/schemas
 SHARE            =$(OUTDIR)/libshare.a
-SRC              =app.c canvas.c document.c main.c
+SRC              =app.c document.c main.c
 SRCOBJ           =$(addprefix $(TARGET)/, $(SRC:%.c=%.o))
 TARGET           =build
 .PHONY: all clean install uninstall

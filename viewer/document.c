@@ -3,57 +3,79 @@
 #include <glib/gi18n.h>
 #include "viewer.h"
 #include "share.h"
-#define LOGO_ICON_NAME        "viewer"
-#define PROPERTY_APPLICATION  "application"
-#define PROPERTY_SHOW_MENUBAR "show-menubar"
-#define SETTINGS_HEIGHT       "window-height"
-#define SETTINGS_MAXIMIZED    "window-maximized"
-#define SETTINGS_WIDTH        "window-width"
-#define SIGNAL_NOTIFY_STATE   "notify::state"
-#define TITLE                 _("Picture Viewer")
-#define TITLE_CCH             256
-#define TITLE_FORMAT          "%s - %s"
+#define FILE_PROPERTY_NAME          "file"
+#define FILE_PROPERTY_NICK          "Picture File"
+#define FILE_PROPERTY_BLURB         "Picture File"
+#define FILE_PROPERTY_OBJECT_TYPE   G_TYPE_FILE
+#define FILE_PROPERTY_FLAGS         G_PARAM_READWRITE
+#define LOGO_ICON_NAME              "viewer"
+#define PIXBUF_PROPERTY_NAME        "pixbuf"
+#define PIXBUF_PROPERTY_NICK        "Picture Pixbuf"
+#define PIXBUF_PROPERTY_BLURB       "Picture Pixbuf"
+#define PIXBUF_PROPERTY_OBJECT_TYPE GDK_TYPE_PIXBUF
+#define PIXBUF_PROPERTY_FLAGS       G_PARAM_READWRITE
+#define PROPERTY_APPLICATION        "application"
+#define PROPERTY_SHOW_MENUBAR       "show-menubar"
+#define SETTINGS_HEIGHT             "window-height"
+#define SETTINGS_MAXIMIZED          "window-maximized"
+#define SETTINGS_WIDTH              "window-width"
+#define SIGNAL_NOTIFY_STATE         "notify::state"
+#define TITLE                       _("Picture Viewer")
+#define TITLE_CCH                   256
+#define TITLE_FORMAT                "%s - %s"
+
+/* クラスのプロパティ */
+enum _ViewerDocumentWindowProperties
+{
+	NULL_PROPERTY_ID,
+	FILE_PROPERTY_ID,
+	PIXBUF_PROPERTY_ID,
+};
 
 /* クラスのインスタンス */
 struct _ViewerDocumentWindow
 {
 	GtkApplicationWindow parent_instance;
 	GFile               *file;
-	GtkWidget           *canvas;
+	GdkPixbuf           *pixbuf;
+	GtkWidget           *area;
 	int                  width;
 	int                  height;
 	int                  maximized;
 };
 
-static void     viewer_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void     viewer_document_window_activate_open      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
-static void     viewer_document_window_change_surface     (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
-static void     viewer_document_window_class_init         (ViewerDocumentWindowClass *this_class);
-static void     viewer_document_window_class_init_object  (GObjectClass *this_class);
-static void     viewer_document_window_class_init_widget  (GtkWidgetClass *this_class);
-static void     viewer_document_window_clear_file         (ViewerDocumentWindow *self);
-static void     viewer_document_window_connect_surface    (GtkWidget *self);
-static void     viewer_document_window_constructed        (GObject *self);
-static void     viewer_document_window_destroy            (ViewerDocumentWindow *self);
-static void     viewer_document_window_disconnect_surface (GtkWidget *self);
-static void     viewer_document_window_dispose            (GObject *self);
-static void     viewer_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
-static void     viewer_document_window_init               (ViewerDocumentWindow *self);
-static void     viewer_document_window_init_canvas        (ViewerDocumentWindow *self);
-static void     viewer_document_window_init_settings      (ViewerDocumentWindow *self);
-static gboolean viewer_document_window_load               (ViewerDocumentWindow *self, GFile *file);
-static void     viewer_document_window_load_settings      (ViewerDocumentWindow *self);
-static void     viewer_document_window_realize            (GtkWidget *self);
-static void     viewer_document_window_respond_open       (GObject *dialog, GAsyncResult *result, gpointer user_data);
-static void     viewer_document_window_save_settings      (ViewerDocumentWindow *self);
-static void     viewer_document_window_set_property       (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
-static void     viewer_document_window_size_allocate      (GtkWidget *self, int width, int height, int baseline);
-static void     viewer_document_window_unrealize          (GtkWidget *self);
-static void     viewer_document_window_update_size        (ViewerDocumentWindow *self);
-static void     viewer_document_window_update_title       (ViewerDocumentWindow *self);
+static void viewer_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_open      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_print     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_class_init         (ViewerDocumentWindowClass *this_class);
+static void viewer_document_window_class_init_object  (GObjectClass *this_class);
+static void viewer_document_window_class_init_widget  (GtkWidgetClass *this_class);
+static void viewer_document_window_constructed        (GObject *self);
+static void viewer_document_window_destroy            (ViewerDocumentWindow *self);
+static void viewer_document_window_dispose            (GObject *self);
+static void viewer_document_window_draw               (GtkDrawingArea *area, cairo_t *cairo, int width, int height, gpointer user_data);
+static void viewer_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
+static void viewer_document_window_init               (ViewerDocumentWindow *self);
+static void viewer_document_window_init_area          (ViewerDocumentWindow *self);
+static void viewer_document_window_init_content       (ViewerDocumentWindow *self);
+static void viewer_document_window_init_settings      (ViewerDocumentWindow *self);
+static void viewer_document_window_realize            (GtkWidget *self);
+static void viewer_document_window_respond_open       (GObject *dialog, GAsyncResult *result, gpointer user_data);
+static void viewer_document_window_set_property       (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
+static void viewer_document_window_settings_apply     (ViewerDocumentWindow *self);
+static void viewer_document_window_settings_load      (ViewerDocumentWindow *self);
+static void viewer_document_window_settings_save      (ViewerDocumentWindow *self);
+static void viewer_document_window_size_allocate      (GtkWidget *self, int width, int height, int baseline);
+static void viewer_document_window_surface_changed    (GdkSurface *surface, GParamSpec *pspec, gpointer user_data);
+static void viewer_document_window_surface_connect    (GtkWidget *self);
+static void viewer_document_window_surface_disconnect (GtkWidget *self);
+static void viewer_document_window_unrealize          (GtkWidget *self);
+static void viewer_document_window_update_area        (ViewerDocumentWindow *self);
+static void viewer_document_window_update_size        (ViewerDocumentWindow *self);
+static void viewer_document_window_update_title       (ViewerDocumentWindow *self);
 
 /*******************************************************************************
-* Viewer Document Window クラス。
+* Viewer Document Window クラス:
 * ドキュメントを格納するウィンドウを表します。
 * ウィンドウ作成時はドキュメントを作成します。
 * ウィンドウ破棄時はドキュメントを破棄します。
@@ -64,8 +86,9 @@ G_DEFINE_FINAL_TYPE (ViewerDocumentWindow, viewer_document_window, GTK_TYPE_APPL
 static const GActionEntry
 ACTION_ENTRIES [] =
 {
-	{ "show-about", viewer_document_window_activate_about, NULL, NULL, NULL },
-	{ "open",       viewer_document_window_activate_open,  NULL, NULL, NULL },
+	{ "show-about", viewer_document_window_activate_about,  NULL, NULL, NULL },
+	{ "open",       viewer_document_window_activate_open,   NULL, NULL, NULL },
+	{ "print",      viewer_document_window_activate_print,  NULL, NULL, NULL },
 };
 
 /*******************************************************************************
@@ -74,7 +97,7 @@ ACTION_ENTRIES [] =
 static void
 viewer_document_window_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	about (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
+	share_about_dialog_show (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
 }
 
 /*******************************************************************************
@@ -83,20 +106,32 @@ viewer_document_window_activate_about (GSimpleAction *action, GVariant *paramete
 static void
 viewer_document_window_activate_open (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	viewer_choose_file (GTK_WINDOW (user_data), NULL, viewer_document_window_respond_open, user_data);
+	ViewerDocumentWindow *self;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	share_file_dialog_open (GTK_WINDOW (user_data), self->file, viewer_document_window_respond_open, user_data, SHARE_FILE_FILTER_ALL | SHARE_FILE_FILTER_IMAGE);
 }
 
 /*******************************************************************************
-* @brief ウィンドウの大きさを更新します。
+* @brief 印刷ダイアログを表示します。
 */
 static void
-viewer_document_window_change_surface (GdkSurface *surface, GParamSpec *pspec, gpointer user_data)
+viewer_document_window_activate_print (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	ViewerDocumentWindow *self;
-	GdkToplevelState state;
-	state = gdk_toplevel_get_state (GDK_TOPLEVEL (surface));
+	GError *error;
 	self = VIEWER_DOCUMENT_WINDOW (user_data);
-	self->maximized = (state & GDK_TOPLEVEL_STATE_MAXIMIZED) != 0;
+
+	if (self->pixbuf)
+	{
+		error = NULL;
+		share_print_operation_run (GTK_WINDOW (self), self->pixbuf, &error);
+
+		if (error)
+		{
+			share_alert_dialog_show (GTK_WINDOW (self), error);
+			g_error_free (error);
+		}
+	}
 }
 
 /*******************************************************************************
@@ -119,6 +154,8 @@ viewer_document_window_class_init_object (GObjectClass *this_class)
 	this_class->dispose = viewer_document_window_dispose;
 	this_class->get_property = viewer_document_window_get_property;
 	this_class->set_property = viewer_document_window_set_property;
+	OBJECT_CLASS_INSTALL_PROPERTY_OBJECT (this_class, FILE_PROPERTY);
+	OBJECT_CLASS_INSTALL_PROPERTY_OBJECT (this_class, PIXBUF_PROPERTY);
 }
 
 /*******************************************************************************
@@ -130,26 +167,6 @@ viewer_document_window_class_init_widget (GtkWidgetClass *this_class)
 	this_class->realize = viewer_document_window_realize;
 	this_class->size_allocate = viewer_document_window_size_allocate;
 	this_class->unrealize = viewer_document_window_unrealize;
-}
-
-/*******************************************************************************
-* @brief ファイルを破棄します。
-*/
-static void
-viewer_document_window_clear_file (ViewerDocumentWindow *self)
-{
-	g_clear_object (&self->file);
-}
-
-/*******************************************************************************
-* @brief サーフィス通知を購読します。
-*/
-static void
-viewer_document_window_connect_surface (GtkWidget *self)
-{
-	GdkSurface *surface;
-	surface = gtk_native_get_surface (GTK_NATIVE (self));
-	g_signal_connect (surface, SIGNAL_NOTIFY_STATE, G_CALLBACK (viewer_document_window_change_surface), self);
 }
 
 /*******************************************************************************
@@ -168,19 +185,9 @@ viewer_document_window_constructed (GObject *self)
 static void
 viewer_document_window_destroy (ViewerDocumentWindow *self)
 {
-	viewer_document_window_clear_file (self);
-	viewer_document_window_save_settings (self);
-}
-
-/*******************************************************************************
-* @brief サーフィス通知を解約します。
-*/
-static void
-viewer_document_window_disconnect_surface (GtkWidget *self)
-{
-	GdkSurface *surface;
-	surface = gtk_native_get_surface (GTK_NATIVE (self));
-	g_signal_handlers_disconnect_by_func (surface, viewer_document_window_change_surface, self);
+	g_clear_object (&self->file);
+	g_clear_object (&self->pixbuf);
+	viewer_document_window_settings_save (self);
 }
 
 /*******************************************************************************
@@ -194,12 +201,41 @@ viewer_document_window_dispose (GObject *self)
 }
 
 /*******************************************************************************
-* @brief ファイルを取得します。
+* @brief 領域を描画します。
+*/
+static void
+viewer_document_window_draw (GtkDrawingArea *area, cairo_t *cairo, int width, int height, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+
+	if (self->pixbuf)
+	{
+		gdk_cairo_set_source_pixbuf (cairo, self->pixbuf, 0, 0);
+		cairo_paint (cairo);
+	}
+}
+
+/*******************************************************************************
+* @brief 画像ファイルを取得します。
 */
 GFile *
 viewer_document_window_get_file (ViewerDocumentWindow *self)
 {
-	return OBJECT_REF (self->file);
+	GFile *file;
+	file = self->file;
+	return file ? g_object_ref (file) : NULL;
+}
+
+/*******************************************************************************
+* @brief 画像を取得します。
+*/
+GdkPixbuf *
+viewer_document_window_get_pixbuf (ViewerDocumentWindow *self)
+{
+	GdkPixbuf *pixbuf;
+	pixbuf = self->pixbuf;
+	return pixbuf ? g_object_ref (pixbuf) : NULL;
 }
 
 /*******************************************************************************
@@ -208,7 +244,21 @@ viewer_document_window_get_file (ViewerDocumentWindow *self)
 static void
 viewer_document_window_get_property (GObject *self, guint property_id, GValue *value, GParamSpec *pspec)
 {
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
+	ViewerDocumentWindow *properties;
+	properties = VIEWER_DOCUMENT_WINDOW (self);
+
+	switch (property_id)
+	{
+	case FILE_PROPERTY_ID:
+		g_value_set_object (value, properties->file);
+		break;
+	case PIXBUF_PROPERTY_ID:
+		g_value_set_object (value, properties->pixbuf);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
+		break;
+	}
 }
 
 /*******************************************************************************
@@ -218,20 +268,37 @@ static void
 viewer_document_window_init (ViewerDocumentWindow *self)
 {
 	g_action_map_add_action_entries (G_ACTION_MAP (self), ACTION_ENTRIES, G_N_ELEMENTS (ACTION_ENTRIES), self);
-	viewer_document_window_init_canvas (self);
+	viewer_document_window_init_content (self);
+	viewer_document_window_init_area (self);
 	viewer_document_window_update_title (self);
+	viewer_document_window_update_area (self);
 }
 
 /*******************************************************************************
-* @brief キャンバスを作成します。
+* @brief 描画領域を作成します。
 */
 static void
-viewer_document_window_init_canvas (ViewerDocumentWindow *self)
+viewer_document_window_init_area (ViewerDocumentWindow *self)
 {
-	self->canvas = viewer_canvas_new ();
-	gtk_widget_set_hexpand (self->canvas, TRUE);
-	gtk_widget_set_vexpand (self->canvas, TRUE);
-	gtk_window_set_child (GTK_WINDOW (self), self->canvas);
+	GtkWidget *parent, *widget;
+	parent = gtk_window_get_child (GTK_WINDOW (self));
+	widget = gtk_drawing_area_new ();
+	self->area = widget;
+	gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (widget), viewer_document_window_draw, self, NULL);
+	gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (parent), widget);
+}
+
+/*******************************************************************************
+* @brief 内容を作成します。
+*/
+static void
+viewer_document_window_init_content (ViewerDocumentWindow *self)
+{
+	GtkWidget *widget;
+	widget = gtk_scrolled_window_new ();
+	gtk_widget_set_hexpand (widget, TRUE);
+	gtk_widget_set_vexpand (widget, TRUE);
+	gtk_window_set_child (GTK_WINDOW (self), widget);
 }
 
 /*******************************************************************************
@@ -240,57 +307,8 @@ viewer_document_window_init_canvas (ViewerDocumentWindow *self)
 static void
 viewer_document_window_init_settings (ViewerDocumentWindow *self)
 {
-	GtkWindow *window;
-	window = GTK_WINDOW (self);
-	viewer_document_window_load_settings (self);
-	gtk_window_set_default_size (window, self->width, self->height);
-
-	if (self->maximized)
-	{
-		gtk_window_maximize (window);
-	}
-}
-
-static gboolean
-viewer_document_window_load (ViewerDocumentWindow *self, GFile *file)
-{
-	GError *error;
-	GdkPixbuf *pixbuf;
-	gboolean result;
-	error = NULL;
-	pixbuf = pixload (file, &error);
-
-	if (pixbuf)
-	{
-		viewer_canvas_set_pixbuf (VIEWER_CANVAS (self->canvas), pixbuf);
-		g_object_unref (pixbuf);
-		result = TRUE;
-	}
-	else
-	{
-		result = FALSE;
-	}
-	if (error)
-	{
-		alert (GTK_WINDOW (self), error);
-		g_clear_error (&error);
-	}
-
-	return result;
-}
-
-/*******************************************************************************
-* @brief 環境設定を読み込みます。
-*/
-static void
-viewer_document_window_load_settings (ViewerDocumentWindow *self)
-{
-	GSettings *settings;
-	settings = viewer_get_settings ();
-	self->width = g_settings_get_int (settings, SETTINGS_WIDTH);
-	self->height = g_settings_get_int (settings, SETTINGS_HEIGHT);
-	self->maximized = g_settings_get_boolean (settings, SETTINGS_MAXIMIZED);
-	g_object_unref (settings);
+	viewer_document_window_settings_load (self);
+	viewer_document_window_settings_apply (self);
 }
 
 /*******************************************************************************
@@ -299,10 +317,7 @@ viewer_document_window_load_settings (ViewerDocumentWindow *self)
 GtkWidget *
 viewer_document_window_new (GApplication *application)
 {
-	return g_object_new (VIEWER_TYPE_DOCUMENT_WINDOW,
-		PROPERTY_APPLICATION, application,
-		PROPERTY_SHOW_MENUBAR, TRUE,
-		NULL);
+	return g_object_new (VIEWER_TYPE_DOCUMENT_WINDOW, PROPERTY_APPLICATION, application, PROPERTY_SHOW_MENUBAR, TRUE, NULL);
 }
 
 /*******************************************************************************
@@ -312,7 +327,7 @@ static void
 viewer_document_window_realize (GtkWidget *self)
 {
 	GTK_WIDGET_CLASS (viewer_document_window_parent_class)->realize (self);
-	viewer_document_window_connect_surface (self);
+	viewer_document_window_surface_connect (self);
 }
 
 /*******************************************************************************
@@ -321,39 +336,36 @@ viewer_document_window_realize (GtkWidget *self)
 static void
 viewer_document_window_respond_open (GObject *dialog, GAsyncResult *result, gpointer user_data)
 {
+	GError *error;
 	GFile *file;
+	GdkPixbuf *pixbuf;
 	ViewerDocumentWindow *self;
 	file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (dialog), result, NULL);
 
 	if (file)
 	{
+		error = NULL;
 		self = VIEWER_DOCUMENT_WINDOW (user_data);
-
-		if (viewer_document_window_load (self, file))
-		{
-			viewer_document_window_set_file (self, file);
-		}
-
+		pixbuf = share_pixbuf_create_from_file (file, &error);
+		viewer_document_window_set_file (self, pixbuf ? file : NULL);
+		viewer_document_window_set_pixbuf (self, pixbuf);
 		g_object_unref (file);
+
+		if (pixbuf)
+		{
+			g_object_unref (pixbuf);
+		}
+		if (error)
+		{
+			share_alert_dialog_show (GTK_WINDOW (self), error);
+			g_error_free (error);
+		}
 	}
 }
 
 /*******************************************************************************
-* @brief 環境設定を書き込みます。
-*/
-static void
-viewer_document_window_save_settings (ViewerDocumentWindow *self)
-{
-	GSettings *settings;
-	settings = viewer_get_settings ();
-	g_settings_set_int (settings, SETTINGS_WIDTH, self->width);
-	g_settings_set_int (settings, SETTINGS_HEIGHT, self->height);
-	g_settings_set_boolean (settings, SETTINGS_MAXIMIZED, self->maximized);
-	g_object_unref (settings);
-}
-
-/*******************************************************************************
-* @brief ファイルを設定します。
+* @brief 画像ファイルを設定します。
+* ウィンドウ タイトルを更新します。
 */
 void
 viewer_document_window_set_file (ViewerDocumentWindow *self, GFile *file)
@@ -364,16 +376,29 @@ viewer_document_window_set_file (ViewerDocumentWindow *self, GFile *file)
 		{
 			g_object_unref (self->file);
 		}
-		if (file)
+
+		self->file = file ? g_object_ref (file) : NULL;
+		viewer_document_window_update_title (self);
+	}
+}
+
+/*******************************************************************************
+* @brief 画像を設定します。
+* 描画領域を更新します。
+*/
+void
+viewer_document_window_set_pixbuf (ViewerDocumentWindow *self, GdkPixbuf *pixbuf)
+{
+	if (self->pixbuf != pixbuf)
+	{
+		if (self->pixbuf)
 		{
-			self->file = g_object_ref (file);
-		}
-		else
-		{
-			self->file = NULL;
+			g_object_unref (self->pixbuf);
 		}
 
-		viewer_document_window_update_title (self);
+		self->pixbuf = pixbuf ? g_object_ref (pixbuf) : NULL;
+		viewer_document_window_update_area (self);
+		gtk_widget_queue_draw (self->area);
 	}
 }
 
@@ -383,7 +408,65 @@ viewer_document_window_set_file (ViewerDocumentWindow *self, GFile *file)
 static void
 viewer_document_window_set_property (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
+	ViewerDocumentWindow *properties;
+	properties = VIEWER_DOCUMENT_WINDOW (self);
+
+	switch (property_id)
+	{
+	case FILE_PROPERTY_ID:
+		viewer_document_window_set_file (properties, g_value_get_object (value));
+		break;
+	case PIXBUF_PROPERTY_ID:
+		viewer_document_window_set_pixbuf (properties, g_value_get_object (value));
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
+		break;
+	}
+}
+
+/*******************************************************************************
+* @brief 環境設定を適用します。
+*/
+static void
+viewer_document_window_settings_apply (ViewerDocumentWindow *self)
+{
+	GtkWindow *window;
+	window = GTK_WINDOW (self);
+	gtk_window_set_default_size (window, self->width, self->height);
+
+	if (self->maximized)
+	{
+		gtk_window_maximize (window);
+	}
+}
+
+/*******************************************************************************
+* @brief 環境設定を読み込みます。
+*/
+static void
+viewer_document_window_settings_load (ViewerDocumentWindow *self)
+{
+	GSettings *settings;
+	settings = viewer_get_settings ();
+	self->width = g_settings_get_int (settings, SETTINGS_WIDTH);
+	self->height = g_settings_get_int (settings, SETTINGS_HEIGHT);
+	self->maximized = g_settings_get_boolean (settings, SETTINGS_MAXIMIZED);
+	g_object_unref (settings);
+}
+
+/*******************************************************************************
+* @brief 環境設定を書き込みます。
+*/
+static void
+viewer_document_window_settings_save (ViewerDocumentWindow *self)
+{
+	GSettings *settings;
+	settings = viewer_get_settings ();
+	g_settings_set_int (settings, SETTINGS_WIDTH, self->width);
+	g_settings_set_int (settings, SETTINGS_HEIGHT, self->height);
+	g_settings_set_boolean (settings, SETTINGS_MAXIMIZED, self->maximized);
+	g_object_unref (settings);
 }
 
 /*******************************************************************************
@@ -397,13 +480,73 @@ viewer_document_window_size_allocate (GtkWidget *self, int width, int height, in
 }
 
 /*******************************************************************************
+* @brief ウィンドウの大きさを更新します。
+*/
+static void
+viewer_document_window_surface_changed (GdkSurface *surface, GParamSpec *pspec, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	GdkToplevelState state;
+	state = gdk_toplevel_get_state (GDK_TOPLEVEL (surface));
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	self->maximized = (state & GDK_TOPLEVEL_STATE_MAXIMIZED) != 0;
+}
+
+/*******************************************************************************
+* @brief サーフィス通知を購読します。
+*/
+static void
+viewer_document_window_surface_connect (GtkWidget *self)
+{
+	GdkSurface *surface;
+	surface = gtk_native_get_surface (GTK_NATIVE (self));
+	g_signal_connect (surface, SIGNAL_NOTIFY_STATE, G_CALLBACK (viewer_document_window_surface_changed), self);
+}
+
+/*******************************************************************************
+* @brief サーフィス通知を解約します。
+*/
+static void
+viewer_document_window_surface_disconnect (GtkWidget *self)
+{
+	GdkSurface *surface;
+	surface = gtk_native_get_surface (GTK_NATIVE (self));
+	g_signal_handlers_disconnect_by_func (surface, viewer_document_window_surface_changed, self);
+}
+
+/*******************************************************************************
 * @brief ウィンドウを隠蔽します。
 */
 static void
 viewer_document_window_unrealize (GtkWidget *self)
 {
-	viewer_document_window_disconnect_surface (self);
+	viewer_document_window_surface_disconnect (self);
 	GTK_WIDGET_CLASS (viewer_document_window_parent_class)->unrealize (self);
+}
+
+/*******************************************************************************
+* @brief 描画領域の大きさを更新します。
+*/
+static void
+viewer_document_window_update_area (ViewerDocumentWindow *self)
+{
+	GtkDrawingArea *area;
+	int width, height;
+
+	if (self->pixbuf)
+	{
+		width = gdk_pixbuf_get_width (self->pixbuf);
+		height = gdk_pixbuf_get_height (self->pixbuf);
+	}
+	else
+	{
+		width = 0;
+		height = 0;
+	}
+
+	area = GTK_DRAWING_AREA (self->area);
+	gtk_drawing_area_set_content_width (area, width);
+	gtk_drawing_area_set_content_height (area, height);
 }
 
 /*******************************************************************************

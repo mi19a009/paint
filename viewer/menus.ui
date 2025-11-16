@@ -17,6 +17,13 @@
 			</section>
 			<section>
 				<item>
+					<attribute name="label" translatable="true">_Print...</attribute>
+					<attribute name="action">win.print</attribute>
+					<attribute name="accel">&lt;Ctrl&gt;p</attribute>
+				</item>
+			</section>
+			<section>
+				<item>
 					<attribute name="label" translatable="true">_Quit</attribute>
 					<attribute name="action">window.close</attribute>
 					<attribute name="accel">&lt;Ctrl&gt;q</attribute>

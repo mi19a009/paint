@@ -7,11 +7,14 @@
 G_DECLARE_FINAL_TYPE (DrawApplication,    draw_application,     DRAW, APPLICATION,     GtkApplication);
 G_DECLARE_FINAL_TYPE (DrawDocumentWindow, draw_document_window, DRAW, DOCUMENT_WINDOW, GtkApplicationWindow);
 
-/* Draw モジュール */
+/*******************************************************************************
+* Draw モジュール:
+*/
 GResource *draw_get_resource      (void);
 int        draw_get_resource_path (char *buffer, size_t maxlen, const char *name);
 GSettings *draw_get_settings      (void);
-/* Draw Application モジュール */
-GApplication *draw_application_new (const char *application_id, GApplicationFlags flags);
-/* Draw Document Window モジュール */
+
+/*******************************************************************************
+* Draw Document Window モジュール:
+*/
 GtkWidget *draw_document_window_new (GApplication *application);

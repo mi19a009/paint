@@ -28,7 +28,7 @@ static void paint_canvas_init_hscrollbar (GtkGrid *self);
 static void paint_canvas_init_vscrollbar (GtkGrid *self);
 
 /*******************************************************************************
-* Paint Canvas クラス。
+* Paint Canvas クラス:
 * 描画領域とスクロール バーを格納します。
 */
 G_DEFINE_FINAL_TYPE (PaintCanvas, paint_canvas, GTK_TYPE_GRID);
