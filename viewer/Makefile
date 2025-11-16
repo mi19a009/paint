@@ -1,7 +1,7 @@
 # Make Viewer
 ASSETS           =$(wildcard *.ui) $(wildcard ../icons/48x48/actions/*.png)
 override CFLAGS +=-Wall $(shell pkg-config gtk4 --cflags) -I../share
-LIBS             =-lshare $(shell pkg-config gtk4 --libs) -L../$(TARGET)
+LIBS             =-lshare -lm $(shell pkg-config gtk4 --libs) -L../$(TARGET)
 NAME             =com.github.mi19a009.viewer
 OUT              =$(OUTDIR)/viewer
 OUTDIR           =../$(TARGET)

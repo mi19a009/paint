@@ -1,8 +1,9 @@
 /* Copyright (C) 2025 Taichi Murakami. */
 #pragma once
 #include <gtk/gtk.h>
-#define OBJECT_CLASS_INSTALL_PROPERTY_BOXED(THIS, PROPERTY)  (g_object_class_install_property ((THIS), (PROPERTY ## _ID), g_param_spec_boxed  ((PROPERTY ## _NAME), (PROPERTY ## _NICK), (PROPERTY ## _BLURB), (PROPERTY ## _BOXED_TYPE),  (PROPERTY ## _FLAGS))))
-#define OBJECT_CLASS_INSTALL_PROPERTY_OBJECT(THIS, PROPERTY) (g_object_class_install_property ((THIS), (PROPERTY ## _ID), g_param_spec_object ((PROPERTY ## _NAME), (PROPERTY ## _NICK), (PROPERTY ## _BLURB), (PROPERTY ## _OBJECT_TYPE), (PROPERTY ## _FLAGS))))
+#define OBJECT_CLASS_INSTALL_PROPERTY_BOXED(THIS, PROPERTY)  (g_object_class_install_property ((THIS), (PROPERTY ## _ID), g_param_spec_boxed  ((PROPERTY ## _NAME), (PROPERTY ## _NICK), (PROPERTY ## _BLURB), (PROPERTY ## _BOXED_TYPE),                                                    (PROPERTY ## _FLAGS))))
+#define OBJECT_CLASS_INSTALL_PROPERTY_INT(THIS, PROPERTY)    (g_object_class_install_property ((THIS), (PROPERTY ## _ID), g_param_spec_int    ((PROPERTY ## _NAME), (PROPERTY ## _NICK), (PROPERTY ## _BLURB), (PROPERTY ## _MINIMUM), (PROPERTY ## _MAXIMUM), (PROPERTY ## _DEFAULT_VALUE), (PROPERTY ## _FLAGS))))
+#define OBJECT_CLASS_INSTALL_PROPERTY_OBJECT(THIS, PROPERTY) (g_object_class_install_property ((THIS), (PROPERTY ## _ID), g_param_spec_object ((PROPERTY ## _NAME), (PROPERTY ## _NICK), (PROPERTY ## _BLURB), (PROPERTY ## _OBJECT_TYPE),                                                   (PROPERTY ## _FLAGS))))
 
 typedef enum   _ShareFileDialogFlag ShareFileDialogFlag;
 typedef struct _ShareAccelEntry     ShareAccelEntry;

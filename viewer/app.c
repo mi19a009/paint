@@ -23,11 +23,13 @@ static void viewer_application_startup                (GApplication *self);
 */
 G_DEFINE_FINAL_TYPE (ViewerApplication, viewer_application, GTK_TYPE_APPLICATION);
 static const char *ACCELS_CLOSE        [] = { "<Ctrl>q", NULL };
+static const char *ACCELS_FULLSCREEN   [] = { "F11", NULL };
 static const char *ACCELS_HELP_OVERLAY [] = { "<Ctrl>question", "<Ctrl>slash", NULL };
 static const char *ACCELS_NEW          [] = { "<Ctrl>n", NULL };
 static const char *ACCELS_OPEN         [] = { "<Ctrl>o", NULL };
 static const char *ACCELS_PRINT        [] = { "<Ctrl>p", NULL };
 static const char *ACCELS_RESTORE_ZOOM [] = { "<Ctrl>0", NULL };
+static const char *ACCELS_UNFULLSCREEN [] = { "Escape", NULL };
 static const char *ACCELS_ZOOM_IN      [] = { "<Ctrl>plus", "<Ctrl>semicolon", NULL };
 static const char *ACCELS_ZOOM_OUT     [] = { "<Ctrl>minus", NULL };
 
@@ -36,11 +38,13 @@ static const ShareAccelEntry
 ACCEL_ENTRIES [] =
 {
 	{ "window.close",          ACCELS_CLOSE        },
+	{ "win.fullscreen",        ACCELS_FULLSCREEN   },
 	{ "win.show-help-overlay", ACCELS_HELP_OVERLAY },
 	{ "app.new",               ACCELS_NEW          },
 	{ "win.open",              ACCELS_OPEN         },
 	{ "win.print",             ACCELS_PRINT        },
 	{ "win.restore-zoom",      ACCELS_RESTORE_ZOOM },
+	{ "win.unfullscreen",      ACCELS_UNFULLSCREEN },
 	{ "win.zoom-in",           ACCELS_ZOOM_IN      },
 	{ "win.zoom-out",          ACCELS_ZOOM_OUT     },
 };

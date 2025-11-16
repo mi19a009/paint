@@ -3,6 +3,7 @@
 #include <glib/gi18n.h>
 #include "viewer.h"
 #include "share.h"
+#define ACTION_FULLSCREEN           "fullscreen"
 #define FILE_PROPERTY_NAME          "file"
 #define FILE_PROPERTY_NICK          "Picture File"
 #define FILE_PROPERTY_BLURB         "Picture File"
@@ -24,9 +25,13 @@
 #define TITLE_CCH                   256
 #define TITLE_FORMAT                "%s - %s"
 #define TITLE_FORMAT_ZOOM           "%d%% %s - %s"
-#define ZOOM_PROPERTY_DEFAULT_VALUE 100
+#define ZOOM_PROPERTY_NAME          "zoom"
+#define ZOOM_PROPERTY_NICK          "Zoom"
+#define ZOOM_PROPERTY_BLURB         "Zoom"
 #define ZOOM_PROPERTY_MINIMUM       5
 #define ZOOM_PROPERTY_MAXIMUM       2000
+#define ZOOM_PROPERTY_DEFAULT_VALUE 100
+#define ZOOM_PROPERTY_FLAGS         G_PARAM_READWRITE
 #define ZOOM_RATIO                  1.25F
 
 /* クラスのプロパティ */
@@ -35,6 +40,7 @@ enum _ViewerDocumentWindowProperties
 	NULL_PROPERTY_ID,
 	FILE_PROPERTY_ID,
 	PIXBUF_PROPERTY_ID,
+	ZOOM_PROPERTY_ID,
 };
 
 /* クラスのインスタンス */
@@ -47,15 +53,19 @@ struct _ViewerDocumentWindow
 	int                  zoom;
 	int                  width;
 	int                  height;
-	int                  maximized;
+	unsigned char        maximized;
+	unsigned char        fullscreen;
 };
 
 static void viewer_document_window_activate_about        (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_fullscreen   (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void viewer_document_window_activate_open         (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void viewer_document_window_activate_print        (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void viewer_document_window_activate_restore_zoom (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_activate_unfullscreen (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void viewer_document_window_activate_zoom_in      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void viewer_document_window_activate_zoom_out     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void viewer_document_window_check_action          (GActionMap *self, const char *name, gboolean checked);
 static void viewer_document_window_class_init            (ViewerDocumentWindowClass *this_class);
 static void viewer_document_window_class_init_object     (GObjectClass *this_class);
 static void viewer_document_window_class_init_widget     (GtkWidgetClass *this_class);
@@ -72,6 +82,8 @@ static void viewer_document_window_init_content          (ViewerDocumentWindow *
 static void viewer_document_window_init_settings         (ViewerDocumentWindow *self);
 static void viewer_document_window_realize               (GtkWidget *self);
 static void viewer_document_window_respond_open          (GObject *dialog, GAsyncResult *result, gpointer user_data);
+static void viewer_document_window_set_fullscreen        (ViewerDocumentWindow *self, gboolean fullscreen);
+static void viewer_document_window_set_maximized         (ViewerDocumentWindow *self, gboolean maximized);
 static void viewer_document_window_set_property          (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
 static void viewer_document_window_settings_apply        (ViewerDocumentWindow *self);
 static void viewer_document_window_settings_load         (ViewerDocumentWindow *self);
@@ -98,12 +110,14 @@ static const char *DISABLED_ACTIONS [] = { "print", "restore-zoom", "zoom-in", "
 static const GActionEntry
 ACTION_ENTRIES [] =
 {
-	{ "show-about",   viewer_document_window_activate_about,        NULL, NULL, NULL },
-	{ "open",         viewer_document_window_activate_open,         NULL, NULL, NULL },
-	{ "print",        viewer_document_window_activate_print,        NULL, NULL, NULL },
-	{ "restore-zoom", viewer_document_window_activate_restore_zoom, NULL, NULL, NULL },
-	{ "zoom-in",      viewer_document_window_activate_zoom_in,      NULL, NULL, NULL },
-	{ "zoom-out",     viewer_document_window_activate_zoom_out,     NULL, NULL, NULL },
+	{ "show-about",   viewer_document_window_activate_about,        NULL, NULL,    NULL },
+	{ "fullscreen",   viewer_document_window_activate_fullscreen,   NULL, "false", NULL },
+	{ "open",         viewer_document_window_activate_open,         NULL, NULL,    NULL },
+	{ "print",        viewer_document_window_activate_print,        NULL, NULL,    NULL },
+	{ "restore-zoom", viewer_document_window_activate_restore_zoom, NULL, NULL,    NULL },
+	{ "unfullscreen", viewer_document_window_activate_unfullscreen, NULL, NULL,    NULL },
+	{ "zoom-in",      viewer_document_window_activate_zoom_in,      NULL, NULL,    NULL },
+	{ "zoom-out",     viewer_document_window_activate_zoom_out,     NULL, NULL,    NULL },
 };
 
 /*******************************************************************************
@@ -113,6 +127,25 @@ static void
 viewer_document_window_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	share_about_dialog_show (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
+}
+
+/*******************************************************************************
+* @brief 全画面表示します。
+*/
+static void
+viewer_document_window_activate_fullscreen (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+
+	if (self->fullscreen)
+	{
+		gtk_window_unfullscreen (GTK_WINDOW (self));
+	}
+	else
+	{
+		gtk_window_fullscreen (GTK_WINDOW (self));
+	}
 }
 
 /*******************************************************************************
@@ -159,6 +192,15 @@ viewer_document_window_activate_restore_zoom (GSimpleAction *action, GVariant *p
 }
 
 /*******************************************************************************
+* @brief ウィンドウ表示します。
+*/
+static void
+viewer_document_window_activate_unfullscreen (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	gtk_window_unfullscreen (GTK_WINDOW (user_data));
+}
+
+/*******************************************************************************
 * @brief 詳細表示します。
 */
 static void
@@ -185,6 +227,21 @@ viewer_document_window_activate_zoom_out (GSimpleAction *action, GVariant *param
 }
 
 /*******************************************************************************
+* @brief 指定したメニュー項目にチェックを付けます。
+*/
+static void
+viewer_document_window_check_action (GActionMap *self, const char *name, gboolean checked)
+{
+	GAction *action;
+	action = g_action_map_lookup_action (self, name);
+
+	if (G_IS_SIMPLE_ACTION (action))
+	{
+		g_simple_action_set_state (G_SIMPLE_ACTION (action), g_variant_new_boolean (checked));
+	}
+}
+
+/*******************************************************************************
 * @brief クラスを初期化します。
 */
 static void
@@ -206,6 +263,7 @@ viewer_document_window_class_init_object (GObjectClass *this_class)
 	this_class->set_property = viewer_document_window_set_property;
 	OBJECT_CLASS_INSTALL_PROPERTY_OBJECT (this_class, FILE_PROPERTY);
 	OBJECT_CLASS_INSTALL_PROPERTY_OBJECT (this_class, PIXBUF_PROPERTY);
+	OBJECT_CLASS_INSTALL_PROPERTY_INT (this_class, ZOOM_PROPERTY);
 }
 
 /*******************************************************************************
@@ -331,6 +389,9 @@ viewer_document_window_get_property (GObject *self, guint property_id, GValue *v
 		break;
 	case PIXBUF_PROPERTY_ID:
 		g_value_set_object (value, properties->pixbuf);
+		break;
+	case ZOOM_PROPERTY_ID:
+		g_value_set_int (value, properties->zoom);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
@@ -489,6 +550,30 @@ viewer_document_window_set_file (ViewerDocumentWindow *self, GFile *file)
 }
 
 /*******************************************************************************
+* @brief 全画面表示を設定します。
+*/
+static void
+viewer_document_window_set_fullscreen (ViewerDocumentWindow *self, gboolean fullscreen)
+{
+	fullscreen = fullscreen != 0;
+
+	if (self->fullscreen != fullscreen)
+	{
+		self->fullscreen = fullscreen;
+		viewer_document_window_check_action (G_ACTION_MAP (self), ACTION_FULLSCREEN, fullscreen);
+	}
+}
+
+/*******************************************************************************
+* @brief 最大化表示を設定します。
+*/
+static void
+viewer_document_window_set_maximized (ViewerDocumentWindow *self, gboolean maximized)
+{
+	self->maximized = maximized != 0;
+}
+
+/*******************************************************************************
 * @brief 画像を設定します。
 * 描画領域を更新します。
 */
@@ -537,6 +622,9 @@ viewer_document_window_set_property (GObject *self, guint property_id, const GVa
 	case PIXBUF_PROPERTY_ID:
 		viewer_document_window_set_pixbuf (properties, g_value_get_object (value));
 		break;
+	case ZOOM_PROPERTY_ID:
+		viewer_document_window_set_zoom (properties, g_value_get_int (value));
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (self, property_id, pspec);
 		break;
@@ -566,7 +654,7 @@ viewer_document_window_set_zoom (ViewerDocumentWindow *self, int zoom)
 void
 viewer_document_window_set_zoom_percent (ViewerDocumentWindow *self, float zoom)
 {
-	viewer_document_window_set_zoom (self, zoom * ZOOM_PROPERTY_DEFAULT_VALUE);
+	viewer_document_window_set_zoom (self, lroundf (zoom * ZOOM_PROPERTY_DEFAULT_VALUE));
 }
 
 /*******************************************************************************
@@ -633,7 +721,8 @@ viewer_document_window_surface_changed (GdkSurface *surface, GParamSpec *pspec, 
 	GdkToplevelState state;
 	state = gdk_toplevel_get_state (GDK_TOPLEVEL (surface));
 	self = VIEWER_DOCUMENT_WINDOW (user_data);
-	self->maximized = (state & GDK_TOPLEVEL_STATE_MAXIMIZED) != 0;
+	viewer_document_window_set_maximized (self, state & GDK_TOPLEVEL_STATE_MAXIMIZED);
+	viewer_document_window_set_fullscreen (self, state & GDK_TOPLEVEL_STATE_FULLSCREEN);
 }
 
 /*******************************************************************************
