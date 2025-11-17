@@ -20,7 +20,9 @@
 #define SETTINGS_HEIGHT             "window-height"
 #define SETTINGS_MAXIMIZED          "window-maximized"
 #define SETTINGS_WIDTH              "window-width"
+#define SIGNAL_BEGIN                "begin"
 #define SIGNAL_NOTIFY_STATE         "notify::state"
+#define SIGNAL_SCALE_CHANGED        "scale-changed"
 #define TITLE                       _("Picture Viewer")
 #define TITLE_CCH                   256
 #define TITLE_FORMAT                "%s - %s"
@@ -50,6 +52,7 @@ struct _ViewerDocumentWindow
 	GFile               *file;
 	GdkPixbuf           *pixbuf;
 	GtkWidget           *area;
+	double               scale;
 	int                  zoom;
 	int                  width;
 	int                  height;
@@ -96,6 +99,8 @@ static void viewer_document_window_unrealize             (GtkWidget *self);
 static void viewer_document_window_update_area           (ViewerDocumentWindow *self);
 static void viewer_document_window_update_size           (ViewerDocumentWindow *self);
 static void viewer_document_window_update_title          (ViewerDocumentWindow *self);
+static void viewer_document_window_zoom_begin            (GtkGesture *gesture, GdkEventSequence *sequence, gpointer user_data);
+static void viewer_document_window_zoom_changed          (GtkGestureZoom *zoom, double scale, gpointer user_data);
 
 /*******************************************************************************
 * Viewer Document Window クラス:
@@ -447,12 +452,11 @@ viewer_document_window_init_actions (GActionMap *self)
 static void
 viewer_document_window_init_area (ViewerDocumentWindow *self)
 {
-	GtkWidget *parent, *widget;
+	GtkWidget *parent;
 	parent = gtk_window_get_child (GTK_WINDOW (self));
-	widget = gtk_drawing_area_new ();
-	self->area = widget;
-	gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (widget), viewer_document_window_draw, self, NULL);
-	gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (parent), widget);
+	self->area = gtk_drawing_area_new ();
+	gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (self->area), viewer_document_window_draw, self, NULL);
+	gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (parent), self->area);
 }
 
 /*******************************************************************************
@@ -461,11 +465,16 @@ viewer_document_window_init_area (ViewerDocumentWindow *self)
 static void
 viewer_document_window_init_content (ViewerDocumentWindow *self)
 {
-	GtkWidget *widget;
-	widget = gtk_scrolled_window_new ();
-	gtk_widget_set_hexpand (widget, TRUE);
-	gtk_widget_set_vexpand (widget, TRUE);
-	gtk_window_set_child (GTK_WINDOW (self), widget);
+	GtkGesture *gesture;
+	GtkWidget *content;
+	content = gtk_scrolled_window_new ();
+	gtk_widget_set_hexpand (content, TRUE);
+	gtk_widget_set_vexpand (content, TRUE);
+	gtk_window_set_child (GTK_WINDOW (self), content);
+	gesture = gtk_gesture_zoom_new ();
+	g_signal_connect (gesture, SIGNAL_BEGIN, G_CALLBACK (viewer_document_window_zoom_begin), self);
+	g_signal_connect (gesture, SIGNAL_SCALE_CHANGED, G_CALLBACK (viewer_document_window_zoom_changed), self);
+	gtk_widget_add_controller (content, GTK_EVENT_CONTROLLER (gesture));
 }
 
 /*******************************************************************************
@@ -831,4 +840,27 @@ viewer_document_window_update_title (ViewerDocumentWindow *self)
 	{
 		gtk_window_set_title (GTK_WINDOW (self), TITLE);
 	}
+}
+
+/*******************************************************************************
+* @brief 拡大を開始します。
+*/
+static void
+viewer_document_window_zoom_begin (GtkGesture *gesture, GdkEventSequence *sequence, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	self->scale = viewer_document_window_get_zoom_percent (self);
+}
+
+/*******************************************************************************
+* @brief 拡大率を変更します。
+*/
+static void
+viewer_document_window_zoom_changed (GtkGestureZoom *zoom, double scale, gpointer user_data)
+{
+	ViewerDocumentWindow *self;
+	self = VIEWER_DOCUMENT_WINDOW (user_data);
+	scale *= self->scale;
+	viewer_document_window_set_zoom_percent (self, scale);
 }
