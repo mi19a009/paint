@@ -1,7 +1,7 @@
 # Make Paint
 ASSETS           =$(wildcard *.ui) $(wildcard ../icons/48x48/actions/*.png)
-override CFLAGS +=-Wall $(shell pkg-config gtk4 --cflags) -I../share
-LIBS             =-lshare $(shell pkg-config gtk4 --libs) -L../$(TARGET)
+override CFLAGS +=-Wall $(shell pkg-config gtk4 --cflags) -I../share -D__USE_MISC
+LIBS             =-lshare -lm $(shell pkg-config gtk4 --libs) -L../$(TARGET)
 NAME             =com.github.mi19a009.paint
 OUT              =$(OUTDIR)/paint
 OUTDIR           =../$(TARGET)
@@ -10,7 +10,7 @@ RESOBJ           =$(addprefix $(TARGET)/, $(RES:%.c=%.o))
 SCHEMA           =$(SCHEMAS)/$(NAME).gschema.xml
 SCHEMAS          =$(HOME)/.local/share/glib-2.0/schemas
 SHARE            =$(OUTDIR)/libshare.a
-SRC              =app.c canvas.c document.c main.c
+SRC              =app.c canvas.c command.c document.c draw.c main.c
 SRCOBJ           =$(addprefix $(TARGET)/, $(SRC:%.c=%.o))
 TARGET           =build
 .PHONY: all clean install uninstall

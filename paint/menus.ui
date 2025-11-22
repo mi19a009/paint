@@ -7,19 +7,32 @@
 				<item>
 					<attribute name="label" translatable="true">_New Window</attribute>
 					<attribute name="action">app.new</attribute>
-					<attribute name="accel">&lt;Ctrl&gt;n</attribute>
 				</item>
 				<item>
 					<attribute name="label" translatable="true">_Open File...</attribute>
 					<attribute name="action">win.open</attribute>
-					<attribute name="accel">&lt;Ctrl&gt;o</attribute>
+				</item>
+			</section>
+			<section>
+				<item>
+					<attribute name="label" translatable="true">_Save</attribute>
+					<attribute name="action">win.save</attribute>
+				</item>
+				<item>
+					<attribute name="label" translatable="true">Save _As...</attribute>
+					<attribute name="action">win.save-as</attribute>
+				</item>
+			</section>
+			<section>
+				<item>
+					<attribute name="label" translatable="true">_Print...</attribute>
+					<attribute name="action">win.print</attribute>
 				</item>
 			</section>
 			<section>
 				<item>
 					<attribute name="label" translatable="true">_Quit</attribute>
 					<attribute name="action">window.close</attribute>
-					<attribute name="accel">&lt;Ctrl&gt;q</attribute>
 				</item>
 			</section>
 		</submenu>

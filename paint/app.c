@@ -25,6 +25,10 @@ G_DEFINE_FINAL_TYPE (PaintApplication, paint_application, GTK_TYPE_APPLICATION);
 static const char *ACCELS_CLOSE        [] = { "<Ctrl>q", NULL };
 static const char *ACCELS_HELP_OVERLAY [] = { "<Ctrl>question", "<Ctrl>slash", NULL };
 static const char *ACCELS_NEW          [] = { "<Ctrl>n", NULL };
+static const char *ACCELS_OPEN         [] = { "<Ctrl>o", NULL };
+static const char *ACCELS_PRINT        [] = { "<Ctrl>p", NULL };
+static const char *ACCELS_SAVE         [] = { "<Ctrl>s", NULL };
+static const char *ACCELS_SAVE_AS      [] = { "<Shift><Ctrl>s", NULL };
 
 /* メニュー アクセラレーター */
 static const ShareAccelEntry
@@ -33,6 +37,10 @@ ACCEL_ENTRIES [] =
 	{ "window.close",          ACCELS_CLOSE        },
 	{ "win.show-help-overlay", ACCELS_HELP_OVERLAY },
 	{ "app.new",               ACCELS_NEW          },
+	{ "win.open",              ACCELS_OPEN         },
+	{ "win.print",             ACCELS_PRINT        },
+	{ "win.save",              ACCELS_SAVE         },
+	{ "win.save-as",           ACCELS_SAVE_AS      },
 };
 
 /* メニュー アクション */

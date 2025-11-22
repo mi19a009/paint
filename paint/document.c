@@ -3,35 +3,46 @@
 #include <glib/gi18n.h>
 #include "paint.h"
 #include "share.h"
-#define LOGO_ICON_NAME        "paint"
+#define LOGO_ICON_NAME      "paint"
+#define SIGNAL_NOTIFY_STATE "notify::state"
+
 #define PROPERTY_APPLICATION  "application"
 #define PROPERTY_SHOW_MENUBAR "show-menubar"
-#define SETTINGS_HEIGHT       "window-height"
-#define SETTINGS_MAXIMIZED    "window-maximized"
-#define SETTINGS_WIDTH        "window-width"
-#define SIGNAL_NOTIFY_STATE   "notify::state"
-#define TITLE                 _("Paint")
+
+#define SETTINGS_HEIGHT    "window-height"
+#define SETTINGS_MAXIMIZED "window-maximized"
+#define SETTINGS_WIDTH     "window-width"
+
+#define TITLE          _("Paint")
+#define TITLE_CCH      256
+#define TITLE_FORMAT   "%s - %s"
+#define TITLE_UNTITLED _("(Untitled)")
 
 /* クラスのインスタンス */
 struct _PaintDocumentWindow
 {
 	GtkApplicationWindow parent_instance;
+	GFile               *file;
+	GtkWidget           *canvas;
 	int                  width;
 	int                  height;
 	int                  maximized;
 };
 
 static void paint_document_window_activate_about     (GSimpleAction *action, GVariant *parameter, gpointer user_data);
+static void paint_document_window_activate_open      (GSimpleAction *action, GVariant *parameter, gpointer user_data);
 static void paint_document_window_class_init         (PaintDocumentWindowClass *this_class);
 static void paint_document_window_class_init_object  (GObjectClass *this_class);
 static void paint_document_window_class_init_widget  (GtkWidgetClass *this_class);
 static void paint_document_window_constructed        (GObject *self);
+static void paint_document_window_destroy            (PaintDocumentWindow *self);
 static void paint_document_window_dispose            (GObject *self);
 static void paint_document_window_get_property       (GObject *self, guint property_id, GValue *value, GParamSpec *pspec);
 static void paint_document_window_init               (PaintDocumentWindow *self);
 static void paint_document_window_init_canvas        (PaintDocumentWindow *self);
 static void paint_document_window_init_settings      (PaintDocumentWindow *self);
 static void paint_document_window_realize            (GtkWidget *self);
+static void paint_document_window_respond_open       (GObject *dialog, GAsyncResult *result, gpointer user_data);
 static void paint_document_window_set_property       (GObject *self, guint property_id, const GValue *value, GParamSpec *pspec);
 static void paint_document_window_settings_apply     (PaintDocumentWindow *self);
 static void paint_document_window_settings_load      (PaintDocumentWindow *self);
@@ -42,6 +53,7 @@ static void paint_document_window_surface_connect    (GtkWidget *self);
 static void paint_document_window_surface_disconnect (GtkWidget *self);
 static void paint_document_window_unrealize          (GtkWidget *self);
 static void paint_document_window_update_size        (PaintDocumentWindow *self);
+static void paint_document_window_update_title       (PaintDocumentWindow *self);
 
 /*******************************************************************************
 * Paint Document Window クラス:
@@ -56,6 +68,7 @@ static const GActionEntry
 ACTION_ENTRIES [] =
 {
 	{ "show-about", paint_document_window_activate_about, NULL, NULL, NULL },
+	{ "open",       paint_document_window_activate_open,  NULL, NULL, NULL },
 };
 
 /*******************************************************************************
@@ -65,6 +78,15 @@ static void
 paint_document_window_activate_about (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	share_about_dialog_show (GTK_WINDOW (user_data), TITLE, LOGO_ICON_NAME);
+}
+
+/*******************************************************************************
+* @brief ファイルを開くダイアログを表示します。
+*/
+static void
+paint_document_window_activate_open (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	share_file_dialog_open (GTK_WINDOW (user_data), NULL, paint_document_window_respond_open, user_data, SHARE_FILE_FILTER_IMAGE | SHARE_FILE_FILTER_ALL);
 }
 
 /*******************************************************************************
@@ -111,13 +133,34 @@ paint_document_window_constructed (GObject *self)
 }
 
 /*******************************************************************************
+* @brief プロパティを破棄します。
+*/
+static void
+paint_document_window_destroy (PaintDocumentWindow *self)
+{
+	g_clear_object (&self->file);
+	paint_document_window_settings_save (self);
+}
+
+/*******************************************************************************
 * @brief クラスのインスタンスを破棄します。
 */
 static void
 paint_document_window_dispose (GObject *self)
 {
-	paint_document_window_settings_save (PAINT_DOCUMENT_WINDOW (self));
+	paint_document_window_destroy (PAINT_DOCUMENT_WINDOW (self));
 	G_OBJECT_CLASS (paint_document_window_parent_class)->dispose (self);
+}
+
+/*******************************************************************************
+* @brief ファイルを取得します。
+*/
+GFile *
+paint_document_window_get_file (PaintDocumentWindow *self)
+{
+	GFile *file;
+	file = self->file;
+	return file ? g_object_ref (file) : NULL;
 }
 
 /*******************************************************************************
@@ -136,8 +179,8 @@ static void
 paint_document_window_init (PaintDocumentWindow *self)
 {
 	g_action_map_add_action_entries (G_ACTION_MAP (self), ACTION_ENTRIES, G_N_ELEMENTS (ACTION_ENTRIES), self);
-	gtk_window_set_title (GTK_WINDOW (self), TITLE);
 	paint_document_window_init_canvas (self);
+	paint_document_window_update_title (self);
 }
 
 /*******************************************************************************
@@ -146,11 +189,10 @@ paint_document_window_init (PaintDocumentWindow *self)
 static void
 paint_document_window_init_canvas (PaintDocumentWindow *self)
 {
-	GtkWidget *child;
-	child = paint_canvas_new ();
-	gtk_widget_set_hexpand (child, TRUE);
-	gtk_widget_set_vexpand (child, TRUE);
-	gtk_window_set_child (GTK_WINDOW (self), child);
+	self->canvas = paint_canvas_new ();
+	gtk_widget_set_hexpand (self->canvas, TRUE);
+	gtk_widget_set_vexpand (self->canvas, TRUE);
+	gtk_window_set_child (GTK_WINDOW (self), self->canvas);
 }
 
 /*******************************************************************************
@@ -180,6 +222,77 @@ paint_document_window_realize (GtkWidget *self)
 {
 	GTK_WIDGET_CLASS (paint_document_window_parent_class)->realize (self);
 	paint_document_window_surface_connect (self);
+}
+
+/*******************************************************************************
+* @brief 指定したファイルを開きます。
+*/
+static void
+paint_document_window_respond_open (GObject *dialog, GAsyncResult *result, gpointer user_data)
+{
+	GError *error;
+	GFile *file, *pixfile;
+	GdkPixbuf *pixbuf;
+	PaintDocumentWindow *self;
+	PaintCanvas *canvas;
+	int width, height;
+	file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (dialog), result, NULL);
+
+	if (file)
+	{
+		error = NULL;
+		self = PAINT_DOCUMENT_WINDOW (user_data);
+		canvas = PAINT_CANVAS (self->canvas);
+		pixbuf = share_pixbuf_create_from_file (file, &error);
+
+		if (pixbuf)
+		{
+			pixfile = file;
+			width = gdk_pixbuf_get_width (pixbuf);
+			height = gdk_pixbuf_get_height (pixbuf);
+		}
+		else
+		{
+			pixfile = NULL;
+			width = 0;
+			height = 0;
+		}
+
+		paint_document_window_set_file (self, pixfile);
+		paint_canvas_set_content_width (canvas, width);
+		paint_canvas_set_content_height (canvas, height);
+		paint_canvas_resize (canvas, width, height);
+		paint_canvas_load (canvas, pixbuf);
+		g_object_unref (file);
+
+		if (pixbuf)
+		{
+			g_object_unref (pixbuf);
+		}
+		if (error)
+		{
+			share_alert_dialog_show (GTK_WINDOW (self), error);
+			g_error_free (error);
+		}
+	}
+}
+
+/*******************************************************************************
+* @brief ファイルを設定します。
+*/
+void
+paint_document_window_set_file (PaintDocumentWindow *self, GFile *file)
+{
+	if (self->file != file)
+	{
+		if (self->file)
+		{
+			g_object_unref (self->file);
+		}
+
+		self->file = file ? g_object_ref (file) : NULL;
+		paint_document_window_update_title (self);
+	}
 }
 
 /*******************************************************************************
@@ -300,4 +413,27 @@ paint_document_window_update_size (PaintDocumentWindow *self)
 	{
 		gtk_window_get_default_size (GTK_WINDOW (self), &self->width, &self->height);
 	}
+}
+
+/*******************************************************************************
+* @brief ウィンドウ タイトルを更新します。
+*/
+static void
+paint_document_window_update_title (PaintDocumentWindow *self)
+{
+	char *name;
+	char title [TITLE_CCH];
+
+	if (self->file)
+	{
+		name = g_file_get_basename (self->file);
+		g_snprintf (title, TITLE_CCH, TITLE_FORMAT, name, TITLE);
+		g_free (name);
+	}
+	else
+	{
+		g_snprintf (title, TITLE_CCH, TITLE_FORMAT, TITLE_UNTITLED, TITLE);
+	}
+
+	gtk_window_set_title (GTK_WINDOW (self), title);
 }
